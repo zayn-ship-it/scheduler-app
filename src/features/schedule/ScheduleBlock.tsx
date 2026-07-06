@@ -21,7 +21,7 @@
  * that (not React state) to decide whether the click should open the edit
  * dialog.
  */
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { updateBlock } from "@/lib/storage/projectRepository";
 import { getPersonById } from "@/lib/storage/peopleRepository";
 import type { ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
@@ -51,7 +51,16 @@ export function ScheduleBlock({
   onProjectChanged,
 }: ScheduleBlockProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [person, setPerson] = useState<any | undefined>(undefined);
   const justDraggedRef = useRef(false);
+
+  useEffect(() => {
+    if (block.personId) {
+      getPersonById(block.personId).then(setPerson);
+    } else {
+      setPerson(undefined);
+    }
+  }, [block.personId]);
 
   const { isDragging, previewStartDate, previewEndDate, onBodyPointerDown, onLeftHandlePointerDown, onRightHandlePointerDown } =
     useBlockDragResize({
@@ -72,7 +81,6 @@ export function ScheduleBlock({
 
   const startIdx = Math.max(dayIndex(days, previewStartDate), 0);
   const span = spanLengthDays(previewStartDate, previewEndDate);
-  const person = block.personId ? getPersonById(block.personId) : undefined;
 
   return (
     <>

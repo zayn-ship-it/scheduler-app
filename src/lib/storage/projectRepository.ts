@@ -262,7 +262,7 @@ export async function addBlock(
   return { ...block, id };
 }
 
-export async function updateBlock(projectId: string, block: ScheduleBlock): Promise<void> {
+export async function updateBlock(_projectId: string, block: ScheduleBlock): Promise<void> {
   const { error } = await supabase
     .from("schedule_blocks")
     .update({
@@ -282,7 +282,7 @@ export async function updateBlock(projectId: string, block: ScheduleBlock): Prom
   if (error) throw error;
 }
 
-export async function removeBlock(projectId: string, blockId: string): Promise<void> {
+export async function removeBlock(_projectId: string, blockId: string): Promise<void> {
   const { error } = await supabase.from("schedule_blocks").delete().eq("id", blockId);
   if (error) throw error;
 }
@@ -306,7 +306,7 @@ export async function addPhaseBarEntry(
   return { ...entry, id };
 }
 
-export async function updatePhaseBarEntry(projectId: string, entry: PhaseBarEntry): Promise<void> {
+export async function updatePhaseBarEntry(_projectId: string, entry: PhaseBarEntry): Promise<void> {
   const { error } = await supabase
     .from("phase_bar_entries")
     .update({
@@ -320,7 +320,7 @@ export async function updatePhaseBarEntry(projectId: string, entry: PhaseBarEntr
   if (error) throw error;
 }
 
-export async function removePhaseBarEntry(projectId: string, entryId: string): Promise<void> {
+export async function removePhaseBarEntry(_projectId: string, entryId: string): Promise<void> {
   const { error } = await supabase.from("phase_bar_entries").delete().eq("id", entryId);
   if (error) throw error;
 }

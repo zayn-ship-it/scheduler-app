@@ -31,8 +31,14 @@ export function PublicScheduleView() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (projectId) setProject(getProjectById(projectId));
-    setLoaded(true);
+    async function loadProject() {
+      if (projectId) {
+        const proj = await getProjectById(projectId);
+        setProject(proj);
+      }
+      setLoaded(true);
+    }
+    loadProject();
   }, [projectId]);
 
   if (!loaded) return null;
