@@ -7,7 +7,7 @@
  * create/edit-by-typing path. Saving calls straight into projectRepository
  * and then tells the parent grid to re-read the project from storage.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +49,11 @@ function isExistingBlock(b: BlockEditDialogProps["block"]): b is ScheduleBlock {
 
 export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: BlockEditDialogProps) {
   const existing = isExistingBlock(block) ? block : null;
-  const people = getPeople();
+  const [people, setPeople] = useState<any[]>([]);
+
+  useEffect(() => {
+    getPeople().then(setPeople);
+  }, []);
 
   // A stored timeRange is "HH:mm-HH:mm" (see handleSave) - split it back into the two <input type="time"> values for editing.
   const [existingTimeStart, existingTimeEnd] = (existing?.timeRange ?? "").split("-").map((s) => s.trim());
@@ -66,7 +70,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
   const [color, setColor] = useState(existing?.color ?? COLOR_PRESETS[6].value);
   const [personId, setPersonId] = useState<string | null>(existing?.personId ?? null);
 
-  function handleSave() {
+  async function handleSave() {
     const clamped = clampRangeToBounds(
       startDate,
       endDate < startDate ? startDate : endDate,
@@ -78,8 +82,6 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
       .map((line) => line.trim())
       .filter(Boolean);
 
-    // Stored as a single "HH:mm-HH:mm" string so the rest of the app (calendar badges, tooltips)
-    // doesn't need to know about two separate fields - only this dialog's picker does.
     const timeRange = timeStart && timeEnd ? `${timeStart}-${timeEnd}` : timeStart || "";
 
     const payload = {
@@ -94,19 +96,27 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
       ...clamped,
     };
 
-    if (existing) {
-      updateBlock(projectId, { ...existing, ...payload });
-    } else {
-      addBlock(projectId, payload);
+    try {
+      if (existing) {
+        await updateBlock(projectId, { ...existing, ...payload });
+      } else {
+        await addBlock(projectId, payload);
+      }
+      onSaved();
+      onClose();
+    } catch (error) {
+      console.error("Failed to save block:", error);
     }
-    onSaved();
-    onClose();
   }
 
-  function handleDelete() {
-    if (existing) removeBlock(projectId, existing.id);
-    onSaved();
-    onClose();
+  async function handleDelete() {
+    try {
+      if (existing) await removeBlock(projectId, existing.id);
+      onSaved();
+      onClose();
+    } catch (error) {
+      console.error("Failed to delete block:", error);
+    }
   }
 
   return (

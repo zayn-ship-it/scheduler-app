@@ -89,24 +89,25 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
 
   useEffect(() => {
     if (mode === "edit" && projectId) {
-      const found = getProjectById(projectId);
-      if (found) {
-        setProject(found);
-        setFields({
-          projectCode: found.projectCode,
-          client: found.client,
-          date: found.date,
-          scheduleVersion: found.scheduleVersion,
-          projectName: found.projectName,
-          brand: found.brand,
-          projectManager: found.projectManager,
-          producer: found.producer,
-          startDate: found.startDate,
-          endDate: found.endDate,
-          termsAndConditions: found.termsAndConditions,
-        });
-        setDeliverables(found.deliverables);
-      }
+      getProjectById(projectId).then((found) => {
+        if (found) {
+          setProject(found);
+          setFields({
+            projectCode: found.projectCode,
+            client: found.client,
+            date: found.date,
+            scheduleVersion: found.scheduleVersion,
+            projectName: found.projectName,
+            brand: found.brand,
+            projectManager: found.projectManager,
+            producer: found.producer,
+            startDate: found.startDate,
+            endDate: found.endDate,
+            termsAndConditions: found.termsAndConditions,
+          });
+          setDeliverables(found.deliverables);
+        }
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, projectId]);
@@ -115,20 +116,27 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
     setFields((prev) => ({ ...prev, [key]: value }));
   }
 
-  function refreshFromStorage() {
-    if (projectId) setProject(getProjectById(projectId) ?? null);
+  async function refreshFromStorage() {
+    if (projectId) {
+      const updated = await getProjectById(projectId);
+      setProject(updated ?? null);
+    }
   }
 
-  function handleCreate() {
-    const created = createProject({ ...fields, deliverables });
-    toast.success("Project created");
-    navigate(`/backoffice/projects/${created.id}/edit`);
+  async function handleCreate() {
+    try {
+      const created = await createProject({ ...fields, deliverables });
+      toast.success("Project created");
+      navigate(`/backoffice/projects/${created.id}/edit`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create project");
+    }
   }
 
-  function handleSaveDetails() {
+  async function handleSaveDetails() {
     if (!project) return;
 
-    // Warn (but never silently delete) if the new date range would leave existing blocks outside the visible grid.
     const outOfRangeCount = project.blocks.filter(
       (b) => b.endDate < fields.startDate || b.startDate > fields.endDate,
     ).length;
@@ -138,9 +146,14 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
       );
     }
 
-    patchProject(project.id, { ...fields, deliverables });
-    refreshFromStorage();
-    toast.success("Project details saved");
+    try {
+      await patchProject(project.id, { ...fields, deliverables });
+      await refreshFromStorage();
+      toast.success("Project details saved");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save project");
+    }
   }
 
   if (mode === "edit" && !project) {
@@ -282,7 +295,13 @@ const UNASSIGNED = "__unassigned__";
  * option so it isn't silently lost.
  */
 function PersonSelectField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const peopleNames = getPeople().map((p) => p.name);
+  const [people, setPeople] = useState<any[]>([]);
+
+  useEffect(() => {
+    getPeople().then(setPeople);
+  }, []);
+
+  const peopleNames = people.map((p) => p.name);
   const options = value && !peopleNames.includes(value) ? [...peopleNames, value] : peopleNames;
 
   return (

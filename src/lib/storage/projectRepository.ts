@@ -1,19 +1,10 @@
 /**
  * projectRepository.ts
  * ---------------------------------------------------------------------------
- * The ONLY module that knows where/how Projects are stored. Every part of
- * the app (back office pages, the public schedule view) should read/write
- * projects through the functions here, never through localStorage directly.
- *
- * Why this matters: if a future phase replaces localStorage with a real
- * backend API, only this file needs to change - every component that calls
- * `getProjects()`, `saveProject()`, etc. keeps working unmodified.
- *
- * All functions are synchronous because localStorage is synchronous, but
- * they're written so a future async (fetch-based) version would have a
- * near-identical call shape (just returning Promises instead of values).
+ * Uses Supabase as the backend for all project data.
+ * All functions are now async and return Promises.
  */
-import { readJson, writeJson } from "./localStorageClient";
+import { supabase } from "./supabaseClient";
 import type {
   Project,
   Deliverable,
@@ -22,28 +13,99 @@ import type {
 } from "./types";
 import { todayIso } from "@/lib/dateUtils";
 
-const STORAGE_KEY = "schedule-app:projects";
-
-/** Default Terms & Conditions text pre-filled when a new project is created. */
 export const DEFAULT_TERMS_AND_CONDITIONS = `This schedule is valid only so long as the 50% deposit is paid by the indicated date, any delays will result in the schedule shifting out, please note that the schedule might not shift out by the exact amount of days delayed as other project schedules need to be considered and delays might have a significant impact on timelines. Kindly take note of the scheduled dates for Client/Agency Reviews and Approvals along with dates and times on which feedback is required. It is important to adhere to the target review and approval dates in order to avoid potential shifts in the overall timeline.`;
 
-/** Returns every project currently stored, newest-created first. */
-export function getProjects(): Project[] {
-  const projects = readJson<Project[]>(STORAGE_KEY, []);
-  return [...projects].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+async function reconstructProject(projectId: string): Promise<Project | undefined> {
+  const { data: projectData } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .single();
+
+  if (!projectData) return undefined;
+
+  const { data: deliverables } = await supabase
+    .from("deliverables")
+    .select("*")
+    .eq("project_id", projectId);
+
+  const { data: blocks } = await supabase
+    .from("schedule_blocks")
+    .select("*")
+    .eq("project_id", projectId);
+
+  const { data: phaseBarEntries } = await supabase
+    .from("phase_bar_entries")
+    .select("*")
+    .eq("project_id", projectId);
+
+  return {
+    id: projectData.id,
+    projectCode: projectData.project_code,
+    client: projectData.client,
+    date: projectData.date,
+    scheduleVersion: projectData.schedule_version,
+    projectName: projectData.project_name,
+    brand: projectData.brand,
+    projectManager: projectData.project_manager,
+    producer: projectData.producer,
+    startDate: projectData.start_date,
+    endDate: projectData.end_date,
+    termsAndConditions: projectData.terms_and_conditions,
+    deliverables: (deliverables || []).map((d: any) => ({
+      id: d.id,
+      identifier: d.identifier,
+      description: d.description,
+      qty: d.qty,
+    })),
+    blocks: (blocks || []).map((b: any) => ({
+      id: b.id,
+      lane: b.lane,
+      title: b.title,
+      subHeading: b.sub_heading,
+      startDate: b.start_date,
+      endDate: b.end_date,
+      timeRange: b.time_range,
+      mode: b.mode,
+      notes: b.notes || [],
+      color: b.color,
+      personId: b.person_id,
+    })),
+    phaseBarEntries: (phaseBarEntries || []).map((p: any) => ({
+      id: p.id,
+      label: p.label,
+      startDate: p.start_date,
+      endDate: p.end_date,
+      color: p.color,
+    })),
+    createdAt: projectData.created_at,
+    updatedAt: projectData.updated_at,
+  };
 }
 
-/** Returns a single project by id, or undefined if no project with that id exists. */
-export function getProjectById(id: string): Project | undefined {
-  return getProjects().find((p) => p.id === id);
+export async function getProjects(): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[projectRepository] getProjects error:", error);
+    return [];
+  }
+
+  const projects: Project[] = [];
+  for (const p of data || []) {
+    const project = await reconstructProject(p.id);
+    if (project) projects.push(project);
+  }
+  return projects;
 }
 
-/** Persists the full project list. Internal helper - external code should use the more specific functions below. */
-function saveAll(projects: Project[]): void {
-  writeJson(STORAGE_KEY, projects);
+export async function getProjectById(id: string): Promise<Project | undefined> {
+  return reconstructProject(id);
 }
 
-/** Fields the caller supplies when creating a new project; everything else (id, timestamps, empty arrays) is filled in here. */
 export type NewProjectInput = Omit<
   Project,
   "id" | "createdAt" | "updatedAt" | "deliverables" | "blocks" | "phaseBarEntries" | "termsAndConditions"
@@ -52,159 +114,219 @@ export type NewProjectInput = Omit<
   termsAndConditions?: string;
 };
 
-/** Creates a new project with a generated id and timestamps, and persists it. Returns the created project. */
-export function createProject(input: NewProjectInput): Project {
+export async function createProject(input: NewProjectInput): Promise<Project> {
   const now = new Date().toISOString();
-  const project: Project = {
-    ...input,
-    id: crypto.randomUUID(),
-    deliverables: input.deliverables ?? [],
-    blocks: [],
-    phaseBarEntries: [],
-    termsAndConditions: input.termsAndConditions ?? DEFAULT_TERMS_AND_CONDITIONS,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const all = getProjects();
-  all.push(project);
-  saveAll(all);
+  const projectId = crypto.randomUUID();
+
+  const { error: projectError } = await supabase.from("projects").insert({
+    id: projectId,
+    project_code: input.projectCode,
+    client: input.client,
+    date: input.date,
+    schedule_version: input.scheduleVersion,
+    project_name: input.projectName,
+    brand: input.brand,
+    project_manager: input.projectManager,
+    producer: input.producer,
+    start_date: input.startDate,
+    end_date: input.endDate,
+    terms_and_conditions: input.termsAndConditions ?? DEFAULT_TERMS_AND_CONDITIONS,
+    created_at: now,
+    updated_at: now,
+  });
+
+  if (projectError) throw projectError;
+
+  if (input.deliverables && input.deliverables.length > 0) {
+    const deliverablesToInsert = input.deliverables.map((d) => ({
+      id: d.id || crypto.randomUUID(),
+      project_id: projectId,
+      identifier: d.identifier,
+      description: d.description,
+      qty: d.qty,
+    }));
+    await supabase.from("deliverables").insert(deliverablesToInsert);
+  }
+
+  const project = await reconstructProject(projectId);
+  if (!project) throw new Error("Failed to create project");
   return project;
 }
 
-/** Replaces the stored project matching `updated.id` with `updated` (bumping `updatedAt`). No-op if the id isn't found. */
-export function updateProject(updated: Project): void {
-  const all = getProjects();
-  const index = all.findIndex((p) => p.id === updated.id);
-  if (index === -1) {
-    console.error(`[projectRepository] updateProject: no project with id "${updated.id}"`);
-    return;
-  }
-  all[index] = { ...updated, updatedAt: new Date().toISOString() };
-  saveAll(all);
+export async function updateProject(updated: Project): Promise<void> {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      project_code: updated.projectCode,
+      client: updated.client,
+      date: updated.date,
+      schedule_version: updated.scheduleVersion,
+      project_name: updated.projectName,
+      brand: updated.brand,
+      project_manager: updated.projectManager,
+      producer: updated.producer,
+      start_date: updated.startDate,
+      end_date: updated.endDate,
+      terms_and_conditions: updated.termsAndConditions,
+      updated_at: now,
+    })
+    .eq("id", updated.id);
+
+  if (error) throw error;
 }
 
-/** Deletes a project by id. No-op if it doesn't exist. */
-export function deleteProject(id: string): void {
-  saveAll(getProjects().filter((p) => p.id !== id));
+export async function deleteProject(id: string): Promise<void> {
+  const { error } = await supabase.from("projects").delete().eq("id", id);
+  if (error) throw error;
 }
 
-/**
- * Applies a partial update to one project's top-level fields (e.g. just the
- * date range, or just the header fields) without needing the caller to
- * reconstruct the whole Project object. Blocks/deliverables/phase entries
- * are left untouched unless explicitly included in `patch`.
- */
-export function patchProject(id: string, patch: Partial<Omit<Project, "id" | "createdAt">>): Project | undefined {
-  const project = getProjectById(id);
-  if (!project) {
-    console.error(`[projectRepository] patchProject: no project with id "${id}"`);
-    return undefined;
-  }
-  const updated: Project = { ...project, ...patch, updatedAt: new Date().toISOString() };
-  updateProject(updated);
+export async function patchProject(
+  id: string,
+  patch: Partial<Omit<Project, "id" | "createdAt">>
+): Promise<Project | undefined> {
+  const project = await getProjectById(id);
+  if (!project) return undefined;
+
+  const updated: Project = { ...project, ...patch };
+  await updateProject(updated);
   return updated;
 }
 
-// ---------------------------------------------------------------------------
-// Deliverables (rows within a project)
-// ---------------------------------------------------------------------------
-
-export function addDeliverable(projectId: string, deliverable: Omit<Deliverable, "id">): Project | undefined {
-  const project = getProjectById(projectId);
-  if (!project) return undefined;
-  const updated = {
-    ...project,
-    deliverables: [...project.deliverables, { ...deliverable, id: crypto.randomUUID() }],
-  };
-  updateProject(updated);
-  return updated;
-}
-
-export function updateDeliverable(projectId: string, deliverable: Deliverable): Project | undefined {
-  const project = getProjectById(projectId);
-  if (!project) return undefined;
-  const updated = {
-    ...project,
-    deliverables: project.deliverables.map((d) => (d.id === deliverable.id ? deliverable : d)),
-  };
-  updateProject(updated);
-  return updated;
-}
-
-export function removeDeliverable(projectId: string, deliverableId: string): Project | undefined {
-  const project = getProjectById(projectId);
-  if (!project) return undefined;
-  const updated = {
-    ...project,
-    deliverables: project.deliverables.filter((d) => d.id !== deliverableId),
-  };
-  updateProject(updated);
-  return updated;
-}
-
-// ---------------------------------------------------------------------------
-// Schedule blocks (the draggable/resizable cards on the grid)
-// ---------------------------------------------------------------------------
-
-/** Adds a new schedule block to a project. Returns the created block, or undefined if the project doesn't exist. */
-export function addBlock(projectId: string, block: Omit<ScheduleBlock, "id">): ScheduleBlock | undefined {
-  const project = getProjectById(projectId);
-  if (!project) return undefined;
-  const newBlock: ScheduleBlock = { ...block, id: crypto.randomUUID() };
-  updateProject({ ...project, blocks: [...project.blocks, newBlock] });
-  return newBlock;
-}
-
-/** Replaces one block (matched by id) within a project - used for both metadata edits and drag/resize commits. */
-export function updateBlock(projectId: string, block: ScheduleBlock): void {
-  const project = getProjectById(projectId);
-  if (!project) return;
-  updateProject({
-    ...project,
-    blocks: project.blocks.map((b) => (b.id === block.id ? block : b)),
+// Deliverables
+export async function addDeliverable(
+  projectId: string,
+  deliverable: Omit<Deliverable, "id">
+): Promise<Project | undefined> {
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from("deliverables").insert({
+    id,
+    project_id: projectId,
+    identifier: deliverable.identifier,
+    description: deliverable.description,
+    qty: deliverable.qty,
   });
+
+  if (error) throw error;
+  return getProjectById(projectId);
 }
 
-export function removeBlock(projectId: string, blockId: string): void {
-  const project = getProjectById(projectId);
-  if (!project) return;
-  updateProject({ ...project, blocks: project.blocks.filter((b) => b.id !== blockId) });
+export async function updateDeliverable(
+  projectId: string,
+  deliverable: Deliverable
+): Promise<Project | undefined> {
+  const { error } = await supabase
+    .from("deliverables")
+    .update({
+      identifier: deliverable.identifier,
+      description: deliverable.description,
+      qty: deliverable.qty,
+    })
+    .eq("id", deliverable.id);
+
+  if (error) throw error;
+  return getProjectById(projectId);
 }
 
-// ---------------------------------------------------------------------------
+export async function removeDeliverable(
+  projectId: string,
+  deliverableId: string
+): Promise<Project | undefined> {
+  const { error } = await supabase.from("deliverables").delete().eq("id", deliverableId);
+  if (error) throw error;
+  return getProjectById(projectId);
+}
+
+// Schedule blocks
+export async function addBlock(
+  projectId: string,
+  block: Omit<ScheduleBlock, "id">
+): Promise<ScheduleBlock | undefined> {
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from("schedule_blocks").insert({
+    id,
+    project_id: projectId,
+    lane: block.lane,
+    title: block.title,
+    sub_heading: block.subHeading,
+    start_date: block.startDate,
+    end_date: block.endDate,
+    time_range: block.timeRange,
+    mode: block.mode,
+    notes: block.notes,
+    color: block.color,
+    person_id: block.personId,
+  });
+
+  if (error) throw error;
+  return { ...block, id };
+}
+
+export async function updateBlock(projectId: string, block: ScheduleBlock): Promise<void> {
+  const { error } = await supabase
+    .from("schedule_blocks")
+    .update({
+      lane: block.lane,
+      title: block.title,
+      sub_heading: block.subHeading,
+      start_date: block.startDate,
+      end_date: block.endDate,
+      time_range: block.timeRange,
+      mode: block.mode,
+      notes: block.notes,
+      color: block.color,
+      person_id: block.personId,
+    })
+    .eq("id", block.id);
+
+  if (error) throw error;
+}
+
+export async function removeBlock(projectId: string, blockId: string): Promise<void> {
+  const { error } = await supabase.from("schedule_blocks").delete().eq("id", blockId);
+  if (error) throw error;
+}
+
 // Phase bar entries
-// ---------------------------------------------------------------------------
-
-export function addPhaseBarEntry(projectId: string, entry: Omit<PhaseBarEntry, "id">): PhaseBarEntry | undefined {
-  const project = getProjectById(projectId);
-  if (!project) return undefined;
-  const newEntry: PhaseBarEntry = { ...entry, id: crypto.randomUUID() };
-  updateProject({ ...project, phaseBarEntries: [...project.phaseBarEntries, newEntry] });
-  return newEntry;
-}
-
-export function updatePhaseBarEntry(projectId: string, entry: PhaseBarEntry): void {
-  const project = getProjectById(projectId);
-  if (!project) return;
-  updateProject({
-    ...project,
-    phaseBarEntries: project.phaseBarEntries.map((e) => (e.id === entry.id ? entry : e)),
+export async function addPhaseBarEntry(
+  projectId: string,
+  entry: Omit<PhaseBarEntry, "id">
+): Promise<PhaseBarEntry | undefined> {
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from("phase_bar_entries").insert({
+    id,
+    project_id: projectId,
+    label: entry.label,
+    start_date: entry.startDate,
+    end_date: entry.endDate,
+    color: entry.color,
   });
+
+  if (error) throw error;
+  return { ...entry, id };
 }
 
-export function removePhaseBarEntry(projectId: string, entryId: string): void {
-  const project = getProjectById(projectId);
-  if (!project) return;
-  updateProject({
-    ...project,
-    phaseBarEntries: project.phaseBarEntries.filter((e) => e.id !== entryId),
-  });
+export async function updatePhaseBarEntry(projectId: string, entry: PhaseBarEntry): Promise<void> {
+  const { error } = await supabase
+    .from("phase_bar_entries")
+    .update({
+      label: entry.label,
+      start_date: entry.startDate,
+      end_date: entry.endDate,
+      color: entry.color,
+    })
+    .eq("id", entry.id);
+
+  if (error) throw error;
 }
 
-/** Convenience default used when pre-filling a new project's start/end date pickers. */
+export async function removePhaseBarEntry(projectId: string, entryId: string): Promise<void> {
+  const { error } = await supabase.from("phase_bar_entries").delete().eq("id", entryId);
+  if (error) throw error;
+}
+
 export function defaultNewProjectDateRange(): { startDate: string; endDate: string } {
   const start = todayIso();
-  // Default to a 4-week window - just a sensible starting point the admin can change immediately.
   const startDate = new Date(start);
   const end = new Date(startDate);
   end.setDate(end.getDate() + 27);

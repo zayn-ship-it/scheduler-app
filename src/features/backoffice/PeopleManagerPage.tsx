@@ -20,24 +20,36 @@ export function PeopleManagerPage() {
   const [role, setRole] = useState("");
 
   useEffect(() => {
-    setPeople(getPeople());
+    getPeople().then(setPeople);
   }, []);
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!name.trim()) return;
-    addPerson({ name: name.trim(), role: role.trim() });
-    setPeople(getPeople());
-    setName("");
-    setRole("");
-    toast.success("Person added");
+    try {
+      await addPerson({ name: name.trim(), role: role.trim() });
+      const updated = await getPeople();
+      setPeople(updated);
+      setName("");
+      setRole("");
+      toast.success("Person added");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to add person");
+    }
   }
 
-  function handleRemove(person: Person) {
+  async function handleRemove(person: Person) {
     const confirmed = window.confirm(`Remove "${person.name}"? Any schedule blocks linked to them will show as unlinked.`);
     if (!confirmed) return;
-    removePerson(person.id);
-    setPeople(getPeople());
-    toast.success("Person removed");
+    try {
+      await removePerson(person.id);
+      const updated = await getPeople();
+      setPeople(updated);
+      toast.success("Person removed");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to remove person");
+    }
   }
 
   return (

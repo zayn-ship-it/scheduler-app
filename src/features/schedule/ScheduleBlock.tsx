@@ -59,10 +59,14 @@ export function ScheduleBlock({
       endDate: block.endDate,
       bounds,
       disabled: readOnly,
-      onCommit: (range) => {
+      onCommit: async (range) => {
         justDraggedRef.current = range.startDate !== block.startDate || range.endDate !== block.endDate;
-        updateBlock(projectId, { ...block, ...range });
-        onProjectChanged();
+        try {
+          await updateBlock(projectId, { ...block, ...range });
+          onProjectChanged();
+        } catch (error) {
+          console.error("Failed to update block:", error);
+        }
       },
     });
 

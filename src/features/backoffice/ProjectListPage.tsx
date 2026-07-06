@@ -21,17 +21,23 @@ export function ProjectListPage() {
 
   // Re-read from storage on mount (and whenever we come back to this page via navigation).
   useEffect(() => {
-    setProjects(getProjects());
+    getProjects().then(setProjects);
   }, []);
 
-  function handleDelete(project: Project) {
+  async function handleDelete(project: Project) {
     const confirmed = window.confirm(
       `Delete "${project.projectName || project.projectCode}"? This cannot be undone.`,
     );
     if (!confirmed) return;
-    deleteProject(project.id);
-    setProjects(getProjects());
-    toast.success("Project deleted");
+    try {
+      await deleteProject(project.id);
+      const updated = await getProjects();
+      setProjects(updated);
+      toast.success("Project deleted");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete project");
+    }
   }
 
   function copyPublicLink(projectId: string) {
