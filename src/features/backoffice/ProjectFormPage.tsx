@@ -23,7 +23,6 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -36,7 +35,6 @@ import {
 import {
   createProject,
   defaultNewProjectDateRange,
-  DEFAULT_TERMS_AND_CONDITIONS,
   getProjectById,
   patchProject,
 } from "@/lib/storage/projectRepository";
@@ -59,7 +57,6 @@ interface HeaderFields {
   producer: string;
   startDate: string;
   endDate: string;
-  termsAndConditions: string;
 }
 
 function emptyHeaderFields(): HeaderFields {
@@ -75,7 +72,6 @@ function emptyHeaderFields(): HeaderFields {
     producer: "",
     startDate,
     endDate,
-    termsAndConditions: DEFAULT_TERMS_AND_CONDITIONS,
   };
 }
 
@@ -103,7 +99,6 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
             producer: found.producer,
             startDate: found.startDate,
             endDate: found.endDate,
-            termsAndConditions: found.termsAndConditions,
           });
           setDeliverables(found.deliverables);
         }
@@ -224,17 +219,6 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
           <div className="flex flex-col gap-2">
             <Label>Deliverables</Label>
             <DeliverablesTable deliverables={deliverables} onChange={setDeliverables} />
-          </div>
-
-          <Separator />
-
-          <div className="flex flex-col gap-2">
-            <Label>Terms &amp; Conditions</Label>
-            <Textarea
-              rows={5}
-              value={fields.termsAndConditions}
-              onChange={(e) => updateField("termsAndConditions", e.target.value)}
-            />
           </div>
 
           <div>

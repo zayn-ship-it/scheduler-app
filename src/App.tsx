@@ -12,7 +12,7 @@ import { PasswordGate } from "@/auth/PasswordGate";
 import { BackOfficeLayout } from "@/features/backoffice/BackOfficeLayout";
 import { ProjectListPage } from "@/features/backoffice/ProjectListPage";
 import { ProjectFormPage } from "@/features/backoffice/ProjectFormPage";
-import { PeopleManagerPage } from "@/features/backoffice/PeopleManagerPage";
+import { SettingsPage } from "@/features/backoffice/SettingsPage";
 import { PublicScheduleView } from "@/features/public/PublicScheduleView";
 
 export default function App() {
@@ -32,7 +32,7 @@ export default function App() {
         <Route path="projects" element={<ProjectListPage />} />
         <Route path="projects/new" element={<ProjectFormPage mode="create" />} />
         <Route path="projects/:projectId/edit" element={<ProjectFormPage mode="edit" />} />
-        <Route path="people" element={<PeopleManagerPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       <Route path="/schedule/:projectId" element={<PublicScheduleView />} />

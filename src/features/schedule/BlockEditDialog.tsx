@@ -70,6 +70,19 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
   const [notesText, setNotesText] = useState((existing?.notes ?? []).join("\n"));
   const [color, setColor] = useState(existing?.color ?? COLOR_PRESETS[6].value);
   const [personId, setPersonId] = useState<string | null>(existing?.personId ?? null);
+  const [externalLink, setExternalLink] = useState(existing?.externalLink ?? "");
+
+  const showColorPicker = lane === "RJF" || lane === "CLIENT";
+  const showExternalLink = lane === "CLIENT";
+
+  useEffect(() => {
+    if (!showColorPicker) {
+      setColor("");
+    } else if (!color) {
+      setColor(COLOR_PRESETS[6].value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lane]);
 
   async function handleSave() {
     const clamped = clampRangeToBounds(
@@ -94,6 +107,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
       notes,
       color,
       personId,
+      externalLink: showExternalLink ? externalLink.trim() || null : null,
       ...clamped,
     };
 
@@ -243,24 +257,38 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
             </Select>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>Colour</Label>
-            <div className="flex flex-wrap gap-2">
-              {COLOR_PRESETS.map((preset) => (
-                <button
-                  key={preset.value}
-                  type="button"
-                  onClick={() => setColor(preset.value)}
-                  className={cn(
-                    "size-7 rounded-full border-2",
-                    color === preset.value ? "border-foreground" : "border-transparent",
-                  )}
-                  style={{ backgroundColor: preset.value }}
-                  title={preset.name}
-                />
-              ))}
+          {showExternalLink && (
+            <div className="flex flex-col gap-2">
+              <Label>External link (optional, shown on the live link)</Label>
+              <Input
+                type="url"
+                value={externalLink}
+                onChange={(e) => setExternalLink(e.target.value)}
+                placeholder="https://..."
+              />
             </div>
-          </div>
+          )}
+
+          {showColorPicker && (
+            <div className="flex flex-col gap-2">
+              <Label>Colour</Label>
+              <div className="flex flex-wrap gap-2">
+                {COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setColor(preset.value)}
+                    className={cn(
+                      "size-7 rounded-full border-2",
+                      color === preset.value ? "border-foreground" : "border-transparent",
+                    )}
+                    style={{ backgroundColor: preset.value }}
+                    title={preset.name}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">

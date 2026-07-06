@@ -12,7 +12,7 @@
  * navigation, clamped to the project's own date range so a client can't
  * page into months with nothing in them.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,8 @@ import {
   getMonthWeekdayGrid,
   toMonthAnchor,
 } from "@/lib/calendarUtils";
-import type { Project } from "@/lib/storage/types";
+import type { PhaseTitle, Project } from "@/lib/storage/types";
+import { getPhaseTitles } from "@/lib/storage/phaseTitleRepository";
 import { AGENCY_NAME } from "@/lib/constants";
 import { MonthWeekRow } from "./MonthWeekRow";
 
@@ -30,6 +31,11 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 export function PublicMonthCalendar({ project }: { project: Project }) {
   const [monthAnchor, setMonthAnchor] = useState(() => getDefaultVisibleMonth(project));
+  const [phaseTitles, setPhaseTitles] = useState<PhaseTitle[]>([]);
+
+  useEffect(() => {
+    getPhaseTitles().then(setPhaseTitles);
+  }, []);
 
   const firstMonth = toMonthAnchor(project.startDate);
   const lastMonth = toMonthAnchor(project.endDate);
@@ -86,6 +92,7 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
           days={week}
           monthAnchor={monthAnchor}
           phaseEntries={project.phaseBarEntries}
+          phaseTitles={phaseTitles}
           rjfBlocks={rjfBlocks}
           clientBlocks={clientBlocks}
           agencyName={AGENCY_NAME}

@@ -81,7 +81,7 @@ export function PublicScheduleView() {
 
       <PublicMonthCalendar project={project} />
 
-      <TermsAndConditions project={project} />
+      <TermsAndConditions />
     </div>
   );
 }

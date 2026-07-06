@@ -13,8 +13,6 @@ import type {
 } from "./types";
 import { todayIso } from "@/lib/dateUtils";
 
-export const DEFAULT_TERMS_AND_CONDITIONS = `This schedule is valid only so long as the 50% deposit is paid by the indicated date, any delays will result in the schedule shifting out, please note that the schedule might not shift out by the exact amount of days delayed as other project schedules need to be considered and delays might have a significant impact on timelines. Kindly take note of the scheduled dates for Client/Agency Reviews and Approvals along with dates and times on which feedback is required. It is important to adhere to the target review and approval dates in order to avoid potential shifts in the overall timeline.`;
-
 async function reconstructProject(projectId: string): Promise<Project | undefined> {
   const { data: projectData } = await supabase
     .from("projects")
@@ -51,7 +49,6 @@ async function reconstructProject(projectId: string): Promise<Project | undefine
     producer: projectData.producer,
     startDate: projectData.start_date,
     endDate: projectData.end_date,
-    termsAndConditions: projectData.terms_and_conditions,
     deliverables: (deliverables || []).map((d: any) => ({
       id: d.id,
       identifier: d.identifier,
@@ -70,13 +67,13 @@ async function reconstructProject(projectId: string): Promise<Project | undefine
       notes: b.notes || [],
       color: b.color,
       personId: b.person_id,
+      externalLink: b.external_link,
     })),
     phaseBarEntries: (phaseBarEntries || []).map((p: any) => ({
       id: p.id,
-      label: p.label,
+      phaseTitleId: p.phase_title_id,
       startDate: p.start_date,
       endDate: p.end_date,
-      color: p.color,
     })),
     createdAt: projectData.created_at,
     updatedAt: projectData.updated_at,
@@ -108,10 +105,9 @@ export async function getProjectById(id: string): Promise<Project | undefined> {
 
 export type NewProjectInput = Omit<
   Project,
-  "id" | "createdAt" | "updatedAt" | "deliverables" | "blocks" | "phaseBarEntries" | "termsAndConditions"
+  "id" | "createdAt" | "updatedAt" | "deliverables" | "blocks" | "phaseBarEntries"
 > & {
   deliverables?: Deliverable[];
-  termsAndConditions?: string;
 };
 
 export async function createProject(input: NewProjectInput): Promise<Project> {
@@ -130,7 +126,6 @@ export async function createProject(input: NewProjectInput): Promise<Project> {
     producer: input.producer,
     start_date: input.startDate,
     end_date: input.endDate,
-    terms_and_conditions: input.termsAndConditions ?? DEFAULT_TERMS_AND_CONDITIONS,
     created_at: now,
     updated_at: now,
   });
@@ -168,7 +163,6 @@ export async function updateProject(updated: Project): Promise<void> {
       producer: updated.producer,
       start_date: updated.startDate,
       end_date: updated.endDate,
-      terms_and_conditions: updated.termsAndConditions,
       updated_at: now,
     })
     .eq("id", updated.id);
@@ -256,6 +250,7 @@ export async function addBlock(
     notes: block.notes,
     color: block.color,
     person_id: block.personId,
+    external_link: block.externalLink,
   });
 
   if (error) throw error;
@@ -276,6 +271,7 @@ export async function updateBlock(_projectId: string, block: ScheduleBlock): Pro
       notes: block.notes,
       color: block.color,
       person_id: block.personId,
+      external_link: block.externalLink,
     })
     .eq("id", block.id);
 
@@ -296,10 +292,9 @@ export async function addPhaseBarEntry(
   const { error } = await supabase.from("phase_bar_entries").insert({
     id,
     project_id: projectId,
-    label: entry.label,
+    phase_title_id: entry.phaseTitleId,
     start_date: entry.startDate,
     end_date: entry.endDate,
-    color: entry.color,
   });
 
   if (error) throw error;
@@ -310,10 +305,9 @@ export async function updatePhaseBarEntry(_projectId: string, entry: PhaseBarEnt
   const { error } = await supabase
     .from("phase_bar_entries")
     .update({
-      label: entry.label,
+      phase_title_id: entry.phaseTitleId,
       start_date: entry.startDate,
       end_date: entry.endDate,
-      color: entry.color,
     })
     .eq("id", entry.id);
 

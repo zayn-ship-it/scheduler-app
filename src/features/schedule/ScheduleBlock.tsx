@@ -81,12 +81,14 @@ export function ScheduleBlock({
 
   const startIdx = Math.max(dayIndex(days, previewStartDate), 0);
   const span = spanLengthDays(previewStartDate, previewEndDate);
+  const isNeutralLane = block.lane === "INTERNAL" || block.lane === "SUPPLIERS" || block.lane === "LEAVE_TRACKER";
 
   return (
     <>
       <div
         className={cn(
-          "group absolute flex flex-col justify-center overflow-hidden rounded-md px-2 py-1 text-white shadow-sm select-none",
+          "group absolute flex flex-col justify-center overflow-hidden rounded-md px-2 py-1 shadow-sm select-none",
+          isNeutralLane ? "border border-foreground/30 bg-transparent text-foreground" : "text-white",
           !readOnly && "cursor-grab active:cursor-grabbing",
           isDragging && "z-30 opacity-90 shadow-lg",
         )}
@@ -95,7 +97,7 @@ export function ScheduleBlock({
           width: span * DAY_COLUMN_WIDTH_PX - 4,
           top: rowIndex * BLOCK_ROW_HEIGHT_PX + 2,
           height: BLOCK_ROW_HEIGHT_PX - 4,
-          backgroundColor: block.color,
+          backgroundColor: isNeutralLane ? undefined : block.color,
         }}
         onPointerDown={onBodyPointerDown}
         onClick={() => {
@@ -114,7 +116,7 @@ export function ScheduleBlock({
             className="absolute left-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onLeftHandlePointerDown}
           >
-            <div className="mx-auto h-full w-0.5 bg-white/70" />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : "bg-white/70")} />
           </div>
         )}
 
@@ -134,7 +136,7 @@ export function ScheduleBlock({
             className="absolute right-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onRightHandlePointerDown}
           >
-            <div className="mx-auto h-full w-0.5 bg-white/70" />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : "bg-white/70")} />
           </div>
         )}
       </div>

@@ -46,6 +46,13 @@ export interface Person {
   role: string;
 }
 
+/** A named, colour-locked phase title in the global master list (managed in Settings). */
+export interface PhaseTitle {
+  id: string;
+  label: string;
+  color: string;
+}
+
 /**
  * A single draggable/resizable content block placed on the schedule grid.
  * Occupies one lane, on one or more consecutive days (startDate..endDate inclusive).
@@ -69,15 +76,20 @@ export interface ScheduleBlock {
   color: string;
   /** Optional link to a Person - mainly used for Leave Tracker entries. */
   personId: string | null;
+  /** Optional external URL, only used on Client lane blocks - shown as a link on the public/live view too. */
+  externalLink: string | null;
 }
 
-/** A single entry in the spanning "Phase" bar above the lanes (e.g. "Web Design", 8 Jun - 14 Jun). */
+/**
+ * A single entry in the spanning "Phase" bar above the lanes (e.g. "Web Design", 8 Jun - 14 Jun).
+ * Its label/colour are resolved live from the matching PhaseTitle in the master list, not stored
+ * here, so recolouring a phase title in Settings updates every project using it.
+ */
 export interface PhaseBarEntry {
   id: string;
-  label: string;
+  phaseTitleId: string;
   startDate: string;
   endDate: string;
-  color: string;
 }
 
 /** A full project: its header/meta info, date range, and everything on its schedule. */
@@ -96,8 +108,6 @@ export interface Project {
   startDate: string;
   /** ISO date "YYYY-MM-DD" - last day shown on the schedule grid. */
   endDate: string;
-  /** Editable long-form legal text, pre-filled with a sensible default on creation. */
-  termsAndConditions: string;
   deliverables: Deliverable[];
   blocks: ScheduleBlock[];
   phaseBarEntries: PhaseBarEntry[];

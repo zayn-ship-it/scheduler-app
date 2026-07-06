@@ -6,7 +6,7 @@
  * `<Outlet />` is where the matched child route's page actually appears.
  */
 import { NavLink, Outlet } from "react-router-dom";
-import { CalendarRange, Users } from "lucide-react";
+import { CalendarRange, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BackOfficeLayout() {
@@ -17,7 +17,7 @@ export function BackOfficeLayout() {
           <div className="text-lg font-semibold">Client Schedule — Back Office</div>
           <nav className="flex items-center gap-1">
             <NavTab to="/backoffice/projects" icon={<CalendarRange className="size-4" />} label="Projects" />
-            <NavTab to="/backoffice/people" icon={<Users className="size-4" />} label="People" />
+            <NavTab to="/backoffice/settings" icon={<Settings className="size-4" />} label="Settings" />
           </nav>
         </div>
       </header>
