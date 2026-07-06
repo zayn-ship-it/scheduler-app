@@ -8,6 +8,7 @@
  * and then tells the parent grid to re-read the project from storage.
  */
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -99,23 +100,28 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
     try {
       if (existing) {
         await updateBlock(projectId, { ...existing, ...payload });
+        toast.success("Block updated");
       } else {
         await addBlock(projectId, payload);
+        toast.success("Block created");
       }
       onSaved();
       onClose();
     } catch (error) {
       console.error("Failed to save block:", error);
+      toast.error("Failed to save block");
     }
   }
 
   async function handleDelete() {
     try {
       if (existing) await removeBlock(projectId, existing.id);
+      toast.success("Block deleted");
       onSaved();
       onClose();
     } catch (error) {
       console.error("Failed to delete block:", error);
+      toast.error("Failed to delete block");
     }
   }
 
