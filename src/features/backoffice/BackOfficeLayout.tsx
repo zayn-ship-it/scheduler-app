@@ -14,7 +14,10 @@ export function BackOfficeLayout() {
     <div className="min-h-svh bg-muted/30">
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="text-lg font-semibold">Client Schedule — Back Office</div>
+          <div className="flex items-center gap-2 text-lg font-semibold">
+            <img src="/app-icon.png" alt="" className="h-3.5 w-3.5" />
+            Client Schedule
+          </div>
           <nav className="flex items-center gap-1">
             <NavTab to="/backoffice/projects" icon={<CalendarRange className="size-4" />} label="Projects" />
             <NavTab to="/backoffice/settings" icon={<Settings className="size-4" />} label="Settings" />
