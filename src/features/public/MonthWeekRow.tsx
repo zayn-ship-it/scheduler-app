@@ -20,13 +20,13 @@
  * neighbouring row.
  *
  * Each RJF/Client block renders as: title + a rounded time/mode "badge" on
- * the same first line, then a second line naming which stream it belongs to
- * (the agency's name for RJF blocks, the project's client name for Client
- * blocks) - this is deliberately the stream's identity, not the block's own
- * free-text sub-heading, so a client glancing at the calendar always sees
- * whose work each bar represents.
+ * the same first line, then its own notes underneath (one line per note) -
+ * the block's row height grows to fit however many note lines it has rather
+ * than truncating them. Hovering a block also opens a HoverCard with the
+ * full detail (title, dates, time, sub-heading, mode, link, notes).
  */
 import { ExternalLink } from "lucide-react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate } from "@/lib/dateUtils";
@@ -34,49 +34,29 @@ import type { PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/typ
 import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
-/** RJF/Client blocks get a tall enough row for both the title/badge line and the stream-name line. */
-const BLOCK_TRACK_ROW_HEIGHT = 36;
+/** Minimum height for a block with no notes - just the title/badge line. */
+const BLOCK_BASE_HEIGHT = 24;
+const NOTE_LINE_HEIGHT = 13;
 const TRACK_GAP = 3;
 
 interface Segment {
-  id: string;
-  label: string;
-  /** Short pill shown inline next to the title, e.g. "17:00-18:00  online". */
-  badgeText?: string;
-  /** Second line under the title - the stream's identity (agency name / client name). */
-  subLabel?: string;
-  /** Optional external URL (Client blocks only), shown as a small clickable link icon. */
-  link?: string;
-  color: string;
+  block: ScheduleBlock;
   colStart: number;
   colSpan: number;
   continuesBefore: boolean;
   continuesAfter: boolean;
 }
 
-/** Clips a set of date-ranged items to this row and converts them into column-indexed segments. */
-function buildSegments<T extends { id: string; startDate: string; endDate: string }>(
-  items: T[],
-  days: string[],
-  label: (item: T) => string,
-  color: (item: T) => string,
-  badgeText?: (item: T) => string | undefined,
-  subLabel?: (item: T) => string | undefined,
-  link?: (item: T) => string | undefined,
-): Segment[] {
+/** Clips a lane's blocks to this row and converts them into column-indexed segments. */
+function buildSegments(blocks: ScheduleBlock[], days: string[]): Segment[] {
   const segments: Segment[] = [];
-  for (const item of items) {
-    const clipped = clipRangeToRow(item.startDate, item.endDate, days[0], days[days.length - 1]);
+  for (const block of blocks) {
+    const clipped = clipRangeToRow(block.startDate, block.endDate, days[0], days[days.length - 1]);
     if (!clipped) continue;
     const colStart = days.indexOf(clipped.start);
     const colEnd = days.indexOf(clipped.end);
     segments.push({
-      id: item.id,
-      label: label(item),
-      badgeText: badgeText?.(item),
-      subLabel: subLabel?.(item),
-      link: link?.(item),
-      color: color(item),
+      block,
       colStart,
       colSpan: colEnd - colStart + 1,
       continuesBefore: clipped.continuesBefore,
@@ -101,60 +81,132 @@ function assignSegmentRows(segments: Segment[]): number[] {
   });
 }
 
-function TrackLayer({
-  segments,
-  trackTop,
-  rowHeight = BLOCK_TRACK_ROW_HEIGHT,
-}: {
-  segments: Segment[];
-  trackTop: number;
-  rowHeight?: number;
-}) {
+/** How tall a segment needs to be to fit its title line plus one line per note, un-truncated. */
+function segmentHeight(segment: Segment): number {
+  const notesCount = segment.block.notes.length;
+  return BLOCK_BASE_HEIGHT + notesCount * NOTE_LINE_HEIGHT;
+}
+
+/** Assigns each segment a top offset + height: segments sharing a stacked row share that row's tallest height. */
+function layoutSegments(segments: Segment[]): { tops: number[]; heights: number[]; totalHeight: number } {
   const rows = assignSegmentRows(segments);
-  const rowCount = Math.max(1, ...rows.map((r) => r + 1));
+  const rowHeights: number[] = [];
+  segments.forEach((segment, index) => {
+    const row = rows[index];
+    rowHeights[row] = Math.max(rowHeights[row] ?? 0, segmentHeight(segment));
+  });
+
+  const rowTops: number[] = [];
+  let acc = 0;
+  for (let row = 0; row < rowHeights.length; row++) {
+    rowTops[row] = acc;
+    acc += rowHeights[row] + TRACK_GAP;
+  }
+
+  const tops = rows.map((row) => rowTops[row]);
+  const heights = rows.map((row) => rowHeights[row]);
+  const totalHeight = Math.max(rowHeights.length > 0 ? acc - TRACK_GAP : 0, BLOCK_BASE_HEIGHT);
+
+  return { tops, heights, totalHeight };
+}
+
+/** "17:00-18:00  online" style badge text from a block's time/mode fields, or undefined if neither is set. */
+function blockBadgeText(block: ScheduleBlock): string | undefined {
+  const parts = [block.timeRange, block.mode].filter(Boolean);
+  return parts.length > 0 ? parts.join("  ") : undefined;
+}
+
+function BlockHoverCardContent({ block }: { block: ScheduleBlock }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="font-semibold leading-tight">{block.title || "(untitled)"}</p>
+      <p className="text-xs text-muted-foreground">
+        {formatDisplayDate(block.startDate)}
+        {block.endDate !== block.startDate && ` – ${formatDisplayDate(block.endDate)}`}
+      </p>
+      {(block.timeRange || block.mode) && (
+        <p className="text-xs text-muted-foreground">{[block.timeRange, block.mode].filter(Boolean).join("  ")}</p>
+      )}
+      {block.subHeading && <p className="text-xs">{block.subHeading}</p>}
+      {block.notes.length > 0 && (
+        <ul className="flex flex-col gap-0.5 text-xs">
+          {block.notes.map((note, i) => (
+            <li key={i}>- {note}</li>
+          ))}
+        </ul>
+      )}
+      {block.externalLink && (
+        <a
+          href={block.externalLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs text-primary underline"
+        >
+          <ExternalLink className="size-3" />
+          Open link
+        </a>
+      )}
+    </div>
+  );
+}
+
+function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: number }) {
+  const { tops, heights, totalHeight } = layoutSegments(segments);
 
   return (
-    <div className="absolute inset-x-0" style={{ top: trackTop, height: rowCount * (rowHeight + TRACK_GAP) }}>
-      {segments.map((segment, index) => (
-        <div
-          key={segment.id}
-          className={cn(
-            "absolute flex flex-col justify-center gap-0.5 overflow-hidden px-2 text-white",
-            !segment.continuesBefore && "rounded-l-md",
-            !segment.continuesAfter && "rounded-r-md",
-          )}
-          style={{
-            left: `${(segment.colStart / 5) * 100}%`,
-            width: `${(segment.colSpan / 5) * 100}%`,
-            top: rows[index] * (rowHeight + TRACK_GAP),
-            height: rowHeight,
-            backgroundColor: segment.color,
-          }}
-          title={[segment.label, segment.badgeText, segment.subLabel].filter(Boolean).join(" — ")}
-        >
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-[12px] font-medium leading-tight">{segment.label}</span>
-            {segment.badgeText && (
-              <span className="shrink-0 whitespace-nowrap rounded-full border border-white/70 px-1.5 py-[1px] text-[9px] leading-tight">
-                {segment.badgeText}
-              </span>
-            )}
-            {segment.link && (
-              <a
-                href={segment.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="pointer-events-auto shrink-0 text-white/90 hover:text-white"
-                onClick={(e) => e.stopPropagation()}
-                title="Open link"
+    <div className="absolute inset-x-0" style={{ top: trackTop, height: totalHeight }}>
+      {segments.map((segment, index) => {
+        const { block } = segment;
+        return (
+          <HoverCard key={block.id} openDelay={150}>
+            <HoverCardTrigger asChild>
+              <div
+                className={cn(
+                  "pointer-events-auto absolute flex flex-col overflow-hidden px-2 py-1 text-white",
+                  !segment.continuesBefore && "rounded-l-md",
+                  !segment.continuesAfter && "rounded-r-md",
+                )}
+                style={{
+                  left: `${(segment.colStart / 5) * 100}%`,
+                  width: `${(segment.colSpan / 5) * 100}%`,
+                  top: tops[index],
+                  height: heights[index],
+                  backgroundColor: block.color,
+                }}
               >
-                <ExternalLink className="size-3" />
-              </a>
-            )}
-          </div>
-          {segment.subLabel && <span className="truncate text-[10px] leading-tight opacity-90">{segment.subLabel}</span>}
-        </div>
-      ))}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate text-[12px] font-medium leading-tight">{block.title || "(untitled)"}</span>
+                  {blockBadgeText(block) && (
+                    <span className="shrink-0 whitespace-nowrap rounded-full border border-white/70 px-1.5 py-[1px] text-[9px] leading-tight">
+                      {blockBadgeText(block)}
+                    </span>
+                  )}
+                  {block.externalLink && (
+                    <a
+                      href={block.externalLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 text-white/90 hover:text-white"
+                      onClick={(e) => e.stopPropagation()}
+                      title="Open link"
+                    >
+                      <ExternalLink className="size-3" />
+                    </a>
+                  )}
+                </div>
+                {block.notes.map((note, i) => (
+                  <span key={i} className="truncate text-[10px] leading-tight opacity-90">
+                    {note}
+                  </span>
+                ))}
+              </div>
+            </HoverCardTrigger>
+            <HoverCardContent>
+              <BlockHoverCardContent block={block} />
+            </HoverCardContent>
+          </HoverCard>
+        );
+      })}
     </div>
   );
 }
@@ -166,16 +218,6 @@ interface MonthWeekRowProps {
   phaseTitles: PhaseTitle[];
   rjfBlocks: ScheduleBlock[];
   clientBlocks: ScheduleBlock[];
-  /** The agency's own name, shown as the second line on every RJF block (e.g. "RunJumpFly"). */
-  agencyName: string;
-  /** This project's client name, shown as the second line on every Client block. */
-  clientName: string;
-}
-
-/** "17:00-18:00  online" style badge text from a block's time/mode fields, or undefined if neither is set. */
-function blockBadgeText(block: ScheduleBlock): string | undefined {
-  const parts = [block.timeRange, block.mode].filter(Boolean);
-  return parts.length > 0 ? parts.join("  ") : undefined;
 }
 
 /** The phase (if any) covering a given day, used to render the coloured date pill. */
@@ -190,34 +232,17 @@ export function MonthWeekRow({
   phaseTitles,
   rjfBlocks,
   clientBlocks,
-  agencyName,
-  clientName,
 }: MonthWeekRowProps) {
   const phaseTitlesById = new Map(phaseTitles.map((t) => [t.id, t]));
-  const rjfSegments = buildSegments(
-    rjfBlocks,
-    days,
-    (b) => b.title || "(untitled)",
-    (b) => b.color,
-    blockBadgeText,
-    () => agencyName,
-  );
-  const clientSegments = buildSegments(
-    clientBlocks,
-    days,
-    (b) => b.title || "(untitled)",
-    (b) => b.color,
-    blockBadgeText,
-    () => clientName,
-    (b) => b.externalLink ?? undefined,
-  );
+  const rjfSegments = buildSegments(rjfBlocks, days);
+  const clientSegments = buildSegments(clientBlocks, days);
 
-  const rjfRows = Math.max(1, ...assignSegmentRows(rjfSegments).map((r) => r + 1));
-  const clientRows = Math.max(1, ...assignSegmentRows(clientSegments).map((r) => r + 1));
+  const rjfLayout = layoutSegments(rjfSegments);
+  const clientLayout = layoutSegments(clientSegments);
 
   const rjfTop = DAY_NUMBER_HEIGHT + 2;
-  const clientTop = rjfTop + rjfRows * (BLOCK_TRACK_ROW_HEIGHT + TRACK_GAP);
-  const rowContentHeight = DAY_NUMBER_HEIGHT + (rjfRows + clientRows) * (BLOCK_TRACK_ROW_HEIGHT + TRACK_GAP) + 8;
+  const clientTop = rjfTop + rjfLayout.totalHeight + TRACK_GAP;
+  const rowContentHeight = clientTop + clientLayout.totalHeight + 8;
 
   return (
     <div className="relative flex border-b border-r">

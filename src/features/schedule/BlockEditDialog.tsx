@@ -160,7 +160,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", isLeaveTracker ? "grid-cols-1" : "grid-cols-2")}>
             <div className="flex flex-col gap-2">
               <Label>Lane</Label>
               <Select value={lane} onValueChange={(v) => setLane(v as Lane)}>
@@ -176,19 +176,21 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label>Mode</Label>
-              <Select value={mode ?? "none"} onValueChange={(v) => setMode(v === "none" ? null : (v as Mode))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">N/A</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                  <SelectItem value="offline">Offline</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!isLeaveTracker && (
+              <div className="flex flex-col gap-2">
+                <Label>Mode</Label>
+                <Select value={mode ?? "none"} onValueChange={(v) => setMode(v === "none" ? null : (v as Mode))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">N/A</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="offline">Offline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {!isLeaveTracker && (
@@ -213,14 +215,16 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <Label>Sub-heading</Label>
-            <Input
-              value={subHeading}
-              onChange={(e) => setSubHeading(e.target.value)}
-              placeholder="e.g. Squeeze Page Design V1"
-            />
-          </div>
+          {!isLeaveTracker && (
+            <div className="flex flex-col gap-2">
+              <Label>Sub-heading</Label>
+              <Input
+                value={subHeading}
+                onChange={(e) => setSubHeading(e.target.value)}
+                placeholder="e.g. Squeeze Page Design V1"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">

@@ -288,7 +288,10 @@ function PhaseEntryDialog({
                     <SelectItem key={t.id} value={t.id}>
                       <span className="flex items-center gap-2">
                         <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
-                        {t.label}
+                        <span>
+                          {t.label}
+                          {t.notes && <span className="ml-1.5 text-xs text-muted-foreground">{t.notes}</span>}
+                        </span>
                       </span>
                     </SelectItem>
                   ))}

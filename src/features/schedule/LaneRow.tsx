@@ -22,6 +22,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Lane, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
 import { LANE_LABELS } from "@/lib/storage/types";
+import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX, BLOCK_ROW_HEIGHT_PX } from "./gridConstants";
 import { ScheduleBlock } from "./ScheduleBlock";
 import { BlockEditDialog } from "./BlockEditDialog";
@@ -79,6 +80,20 @@ export function LaneRow({ projectId, lane, blocks, days, bounds, readOnly, onPro
       </div>
 
       <div className="relative" style={{ width: days.length * DAY_COLUMN_WIDTH_PX, height: trackHeight }}>
+        {lane === "LEAVE_TRACKER" &&
+          days.map((day, index) => {
+            const holiday = getHolidayForDate(day);
+            if (!holiday) return null;
+            return (
+              <div
+                key={`holiday-${day}`}
+                className="pointer-events-none absolute top-0 h-full bg-muted/50"
+                style={{ left: index * DAY_COLUMN_WIDTH_PX, width: DAY_COLUMN_WIDTH_PX }}
+                title={holiday.name}
+              />
+            );
+          })}
+
         {!readOnly &&
           days.map((day, index) => (
             <button
