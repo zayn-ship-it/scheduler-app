@@ -39,8 +39,8 @@ import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
 /** Minimum height for a block with no notes - just the title/badge line. */
-const BLOCK_BASE_HEIGHT = 24;
-const NOTE_LINE_HEIGHT = 13;
+const BLOCK_BASE_HEIGHT = 28;
+const NOTE_LINE_HEIGHT = 16;
 /** Vertical gap between the title line and each note line, and between notes themselves (matches the `gap-1` class below). */
 const CONTENT_GAP = 4;
 const TRACK_GAP = 3;
@@ -192,7 +192,7 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                 }}
               >
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-[12px] font-medium leading-tight">{block.title || "(untitled)"}</span>
+                  <span className="truncate text-[15px] font-medium leading-tight">{block.title || "(untitled)"}</span>
                   {blockBadgeText(block) && (
                     <span
                       className={cn(
@@ -217,7 +217,7 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                   )}
                 </div>
                 {segment.lines.map((line, i) => (
-                  <span key={i} className="truncate text-[10px] leading-tight opacity-90">
+                  <span key={i} className="truncate text-[12px] leading-tight opacity-90">
                     {line}
                   </span>
                 ))}

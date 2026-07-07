@@ -47,7 +47,8 @@ export function ProjectListPage() {
   function copyPublicLink(projectId: string) {
     const url = `${window.location.origin}/schedule/${projectId}`;
     navigator.clipboard.writeText(url);
-    toast.success("Public schedule link copied to clipboard");
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.success("Public schedule link copied to clipboard and opened in a new tab");
   }
 
   return (

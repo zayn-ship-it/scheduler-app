@@ -7,7 +7,7 @@
  * typing path. Saving calls straight into projectRepository and then tells
  * the parent grid to re-read the project from storage.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import {
@@ -59,6 +59,9 @@ interface BlockEditDialogProps {
   onSaved: () => void;
 }
 
+/** Sentinel Select value for "switch to a free-text title" - never a real preset id/label. */
+const CUSTOM_TITLE_VALUE = "__custom_title__";
+
 function isExistingBlock(b: BlockEditDialogProps["block"]): b is ScheduleBlock {
   return "id" in b;
 }
@@ -94,6 +97,18 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const showExternalLink = lane === "RJF" || lane === "CLIENT";
   const isLeaveTracker = lane === "LEAVE_TRACKER";
   const titleOptionsForLane = laneTitleOptions.filter((o) => o.lane === lane);
+
+  // The dropdown offers preset titles, but a custom title must always remain possible (e.g. this block's
+  // title was set before the preset existed, or this occasion just isn't in the list).
+  const [customTitleMode, setCustomTitleMode] = useState(false);
+  const hasCheckedInitialTitleMatch = useRef(false);
+  useEffect(() => {
+    if (hasCheckedInitialTitleMatch.current || titleOptionsForLane.length === 0) return;
+    hasCheckedInitialTitleMatch.current = true;
+    if (title && !titleOptionsForLane.some((o) => o.label === title)) {
+      setCustomTitleMode(true);
+    }
+  }, [titleOptionsForLane, title]);
 
   useEffect(() => {
     if (lane === "RJF") {
@@ -215,18 +230,39 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
             <div className="flex flex-col gap-2">
               <Label>Title</Label>
               {titleOptionsForLane.length > 0 ? (
-                <Select value={title} onValueChange={setTitle}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a title" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {titleOptionsForLane.map((o) => (
-                      <SelectItem key={o.id} value={o.label}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <>
+                  <Select
+                    value={customTitleMode ? CUSTOM_TITLE_VALUE : title}
+                    onValueChange={(v) => {
+                      if (v === CUSTOM_TITLE_VALUE) {
+                        setCustomTitleMode(true);
+                      } else {
+                        setCustomTitleMode(false);
+                        setTitle(v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a title" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {titleOptionsForLane.map((o) => (
+                        <SelectItem key={o.id} value={o.label}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={CUSTOM_TITLE_VALUE}>Custom title…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {customTitleMode && (
+                    <Input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Client Review"
+                      autoFocus
+                    />
+                  )}
+                </>
               ) : (
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Client Review" />
               )}
