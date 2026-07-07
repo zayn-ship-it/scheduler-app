@@ -68,6 +68,7 @@ async function reconstructProject(projectId: string): Promise<Project | undefine
       color: b.color,
       personId: b.person_id,
       externalLink: b.external_link,
+      linkLabel: b.link_label,
     })),
     phaseBarEntries: (phaseBarEntries || []).map((p: any) => ({
       id: p.id,
@@ -251,6 +252,7 @@ export async function addBlock(
     color: block.color,
     person_id: block.personId,
     external_link: block.externalLink,
+    link_label: block.linkLabel,
   });
 
   if (error) throw error;
@@ -272,6 +274,7 @@ export async function updateBlock(_projectId: string, block: ScheduleBlock): Pro
       color: block.color,
       person_id: block.personId,
       external_link: block.externalLink,
+      link_label: block.linkLabel,
     })
     .eq("id", block.id);
 

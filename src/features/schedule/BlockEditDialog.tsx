@@ -33,7 +33,7 @@ import { getPeople } from "@/lib/storage/peopleRepository";
 import { getLaneTitleOptions } from "@/lib/storage/laneTitleOptionRepository";
 import { LANE_LABELS, LANE_ORDER, type Lane, type LaneTitleOption, type Mode, type ScheduleBlock } from "@/lib/storage/types";
 import { clampRangeToBounds } from "@/lib/dateUtils";
-import { COLOR_PRESETS } from "./colorPresets";
+import { COLOR_PRESETS, GREY_SHADES } from "./colorPresets";
 import { cn } from "@/lib/utils";
 
 interface BlockEditDialogProps {
@@ -74,11 +74,13 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
   const [color, setColor] = useState(existing?.color ?? COLOR_PRESETS[6].value);
   const [personId, setPersonId] = useState<string | null>(existing?.personId ?? null);
   const [externalLink, setExternalLink] = useState(existing?.externalLink ?? "");
+  const [linkLabel, setLinkLabel] = useState(existing?.linkLabel ?? "");
 
   const showColorPicker = lane === "RJF" || lane === "CLIENT";
-  const showExternalLink = lane === "CLIENT";
+  const showExternalLink = lane === "RJF" || lane === "CLIENT";
   const isLeaveTracker = lane === "LEAVE_TRACKER";
   const titleOptionsForLane = laneTitleOptions.filter((o) => o.lane === lane);
+  const colorPresetsForLane = lane === "RJF" ? [...COLOR_PRESETS, ...GREY_SHADES] : COLOR_PRESETS;
 
   useEffect(() => {
     if (!showColorPicker) {
@@ -117,6 +119,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
       color,
       personId,
       externalLink: showExternalLink ? externalLink.trim() || null : null,
+      linkLabel: showExternalLink ? linkLabel.trim() || null : null,
       ...clamped,
     };
 
@@ -288,14 +291,24 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
           </div>
 
           {showExternalLink && (
-            <div className="flex flex-col gap-2">
-              <Label>External link (optional, shown on the live link)</Label>
-              <Input
-                type="url"
-                value={externalLink}
-                onChange={(e) => setExternalLink(e.target.value)}
-                placeholder="https://..."
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <Label>Link title (optional)</Label>
+                <Input
+                  value={linkLabel}
+                  onChange={(e) => setLinkLabel(e.target.value)}
+                  placeholder="e.g. Zoom Call"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Link URL (optional, shown on the live link)</Label>
+                <Input
+                  type="url"
+                  value={externalLink}
+                  onChange={(e) => setExternalLink(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
             </div>
           )}
 
@@ -303,7 +316,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
             <div className="flex flex-col gap-2">
               <Label>Colour</Label>
               <div className="flex flex-wrap gap-2">
-                {COLOR_PRESETS.map((preset) => (
+                {colorPresetsForLane.map((preset) => (
                   <button
                     key={preset.value}
                     type="button"

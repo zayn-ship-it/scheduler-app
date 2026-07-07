@@ -85,8 +85,10 @@ export interface ScheduleBlock {
   color: string;
   /** Optional link to a Person - mainly used for Leave Tracker entries. */
   personId: string | null;
-  /** Optional external URL, only used on Client lane blocks - shown as a link on the public/live view too. */
+  /** Optional external URL (RJF/Client lane blocks only) - shown as a link on the public/live view too. */
   externalLink: string | null;
+  /** Optional custom label for externalLink, e.g. "Zoom Call" - falls back to "Open meeting link" when unset. */
+  linkLabel: string | null;
 }
 
 /**

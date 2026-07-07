@@ -38,7 +38,7 @@ import {
   updateGlobalTermsAndConditions,
 } from "@/lib/storage/settingsRepository";
 import { LANE_LABELS, type Lane, type LaneTitleOption, type Person, type PhaseTitle } from "@/lib/storage/types";
-import { COLOR_PRESETS } from "@/features/schedule/colorPresets";
+import { COLOR_PRESETS, EXPANDED_COLOR_PRESETS } from "@/features/schedule/colorPresets";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -214,8 +214,8 @@ function PhaseTitlesSection() {
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Colour</span>
-              <div className="flex flex-wrap gap-2">
-                {COLOR_PRESETS.map((preset) => (
+              <div className="flex max-w-xs flex-wrap gap-2">
+                {EXPANDED_COLOR_PRESETS.map((preset) => (
                   <button
                     key={preset.value}
                     type="button"
