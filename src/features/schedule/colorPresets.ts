@@ -25,16 +25,6 @@ export const COLOR_PRESETS: ColorPreset[] = [
   { name: "Pink", value: "#db2777" },
 ];
 
-/** Extra grey/slate shades, offered alongside COLOR_PRESETS for RJF blocks (which lean toward a neutral, monochrome look). */
-export const GREY_SHADES: ColorPreset[] = [
-  { name: "Slate 300", value: "#cbd5e1" },
-  { name: "Slate 400", value: "#94a3b8" },
-  { name: "Slate 500", value: "#64748b" },
-  { name: "Slate 700", value: "#334155" },
-  { name: "Slate 800", value: "#1e293b" },
-  { name: "Slate 900", value: "#0f172a" },
-];
-
 /** Light/medium/dark shade hexes for each COLOR_PRESETS entry, keyed by preset name. */
 const SHADES: Record<string, { light: string; medium: string; dark: string }> = {
   Slate: { light: "#cbd5e1", medium: "#64748b", dark: "#1e293b" },

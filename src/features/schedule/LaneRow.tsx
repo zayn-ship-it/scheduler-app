@@ -88,7 +88,7 @@ export function LaneRow({ projectId, lane, blocks, deliverables, days, bounds, r
             return (
               <div
                 key={`holiday-${day}`}
-                className="pointer-events-none absolute top-0 h-full bg-muted/50"
+                className="pointer-events-none absolute top-0 h-full bg-muted bg-[repeating-linear-gradient(45deg,theme(colors.muted.foreground/40%),theme(colors.muted.foreground/40%)_2px,transparent_2px,transparent_4px)]"
                 style={{ left: index * DAY_COLUMN_WIDTH_PX, width: DAY_COLUMN_WIDTH_PX }}
                 title={holiday.name}
               />

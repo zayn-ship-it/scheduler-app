@@ -54,43 +54,47 @@ export function PublicScheduleView() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 py-8">
-      <ProjectHeader project={project} />
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 py-8 min-[1440px]:max-w-[1600px] min-[1440px]:grid min-[1440px]:grid-cols-3 min-[1440px]:items-start min-[1440px]:gap-8">
+      <div className="flex flex-col gap-6 min-[1440px]:col-span-1">
+        <ProjectHeader project={project} />
 
-      {project.deliverables.length > 0 && (
-        <div className="rounded-md border p-4">
-          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Deliverables</h2>
-          <div className="mb-4">
-            <DeliverablesProgress deliverables={project.deliverables} />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Identifier</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Aspect Ratio</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {project.deliverables.map((d) => (
-                <TableRow key={d.id} className={cn(d.completed && "text-muted-foreground line-through")}>
-                  <TableCell>{d.identifier}</TableCell>
-                  <TableCell>{d.description}</TableCell>
-                  <TableCell>{d.duration}</TableCell>
-                  <TableCell>{d.aspectRatio}</TableCell>
-                  <TableCell className="text-right">{d.qty}</TableCell>
+        {project.deliverables.length > 0 && (
+          <div className="rounded-md border p-4">
+            <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Deliverables</h2>
+            <div className="mb-4">
+              <DeliverablesProgress deliverables={project.deliverables} />
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Identifier</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Aspect Ratio</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              </TableHeader>
+              <TableBody>
+                {project.deliverables.map((d) => (
+                  <TableRow key={d.id} className={cn(d.completed && "text-muted-foreground line-through")}>
+                    <TableCell>{d.identifier}</TableCell>
+                    <TableCell>{d.description}</TableCell>
+                    <TableCell>{d.duration}</TableCell>
+                    <TableCell>{d.aspectRatio}</TableCell>
+                    <TableCell className="text-right">{d.qty}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
-      <PublicMonthCalendar project={project} />
+        <TermsAndConditions />
+      </div>
 
-      <TermsAndConditions />
+      <div className="min-[1440px]:col-span-2">
+        <PublicMonthCalendar project={project} />
+      </div>
     </div>
   );
 }
