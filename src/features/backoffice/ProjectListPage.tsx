@@ -11,6 +11,7 @@ import { Plus, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getProjects, deleteProject } from "@/lib/storage/projectRepository";
 import type { Project } from "@/lib/storage/types";
 import { formatDisplayDate } from "@/lib/dateUtils";
@@ -18,10 +19,13 @@ import { toast } from "sonner";
 
 export function ProjectListPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Re-read from storage on mount (and whenever we come back to this page via navigation).
   useEffect(() => {
-    getProjects().then(setProjects);
+    getProjects()
+      .then(setProjects)
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleDelete(project: Project) {
@@ -61,7 +65,25 @@ export function ProjectListPage() {
         </Button>
       </div>
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <Skeleton className="h-4 w-1/3" />
+                <div className="flex flex-wrap gap-2">
+                  <Skeleton className="h-8 w-28" />
+                  <Skeleton className="h-8 w-32" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : projects.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
             No projects yet. Click "New Project" to set up your first schedule.

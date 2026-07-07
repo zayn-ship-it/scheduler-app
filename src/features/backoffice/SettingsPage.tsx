@@ -9,22 +9,35 @@
  *   project's public/live page.
  */
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { addPerson, getPeople, removePerson } from "@/lib/storage/peopleRepository";
 import {
   addPhaseTitle,
   getPhaseTitles,
   removePhaseTitle,
+  updatePhaseTitle,
 } from "@/lib/storage/phaseTitleRepository";
+import {
+  addLaneTitleOption,
+  getLaneTitleOptions,
+  removeLaneTitleOption,
+} from "@/lib/storage/laneTitleOptionRepository";
 import {
   getGlobalTermsAndConditions,
   updateGlobalTermsAndConditions,
 } from "@/lib/storage/settingsRepository";
-import type { Person, PhaseTitle } from "@/lib/storage/types";
+import { LANE_LABELS, type Lane, type LaneTitleOption, type Person, type PhaseTitle } from "@/lib/storage/types";
 import { COLOR_PRESETS } from "@/features/schedule/colorPresets";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -39,6 +52,7 @@ export function SettingsPage() {
 
       <PeopleSection />
       <PhaseTitlesSection />
+      <BlockTitlesSection />
       <TermsAndConditionsSection />
     </div>
   );
@@ -129,24 +143,44 @@ function PeopleSection() {
 
 function PhaseTitlesSection() {
   const [phaseTitles, setPhaseTitles] = useState<PhaseTitle[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [color, setColor] = useState(COLOR_PRESETS[0].value);
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
     getPhaseTitles().then(setPhaseTitles);
   }, []);
 
-  async function handleAdd() {
+  function resetForm() {
+    setEditingId(null);
+    setLabel("");
+    setColor(COLOR_PRESETS[0].value);
+    setNotes("");
+  }
+
+  function startEdit(title: PhaseTitle) {
+    setEditingId(title.id);
+    setLabel(title.label);
+    setColor(title.color);
+    setNotes(title.notes);
+  }
+
+  async function handleSave() {
     if (!label.trim()) return;
     try {
-      await addPhaseTitle({ label: label.trim(), color });
+      if (editingId) {
+        await updatePhaseTitle({ id: editingId, label: label.trim(), color, notes: notes.trim() });
+        toast.success("Phase title updated");
+      } else {
+        await addPhaseTitle({ label: label.trim(), color, notes: notes.trim() });
+        toast.success("Phase title added");
+      }
       setPhaseTitles(await getPhaseTitles());
-      setLabel("");
-      setColor(COLOR_PRESETS[0].value);
-      toast.success("Phase title added");
+      resetForm();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to add phase title");
+      toast.error("Failed to save phase title");
     }
   }
 
@@ -156,6 +190,7 @@ function PhaseTitlesSection() {
     try {
       await removePhaseTitle(title.id);
       setPhaseTitles(await getPhaseTitles());
+      if (editingId === title.id) resetForm();
       toast.success("Phase title removed");
     } catch (error) {
       console.error(error);
@@ -169,35 +204,54 @@ function PhaseTitlesSection() {
         <CardTitle className="text-base">Phase Titles</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium" htmlFor="phase-title-label">
-              Title
-            </label>
-            <Input id="phase-title-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Web Design" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Colour</span>
-            <div className="flex flex-wrap gap-2">
-              {COLOR_PRESETS.map((preset) => (
-                <button
-                  key={preset.value}
-                  type="button"
-                  onClick={() => setColor(preset.value)}
-                  className={cn(
-                    "size-7 rounded-full border-2",
-                    color === preset.value ? "border-foreground" : "border-transparent",
-                  )}
-                  style={{ backgroundColor: preset.value }}
-                  title={preset.name}
-                />
-              ))}
+        <div className="flex flex-col gap-3 rounded-md border p-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium" htmlFor="phase-title-label">
+                Title
+              </label>
+              <Input id="phase-title-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Web Design" />
             </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Colour</span>
+              <div className="flex flex-wrap gap-2">
+                {COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setColor(preset.value)}
+                    className={cn(
+                      "size-7 rounded-full border-2",
+                      color === preset.value ? "border-foreground" : "border-transparent",
+                    )}
+                    style={{ backgroundColor: preset.value }}
+                    title={preset.name}
+                  />
+                ))}
+              </div>
+            </div>
+            <Button onClick={handleSave} disabled={!label.trim()}>
+              <Plus className="size-4" />
+              {editingId ? "Save changes" : "Add"}
+            </Button>
+            {editingId && (
+              <Button variant="ghost" onClick={resetForm}>
+                Cancel
+              </Button>
+            )}
           </div>
-          <Button onClick={handleAdd} disabled={!label.trim()}>
-            <Plus className="size-4" />
-            Add
-          </Button>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium" htmlFor="phase-title-notes">
+              Notes (internal only, never shown on the live link)
+            </label>
+            <Textarea
+              id="phase-title-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="e.g. Use this for the initial concept round only"
+            />
+          </div>
         </div>
 
         {phaseTitles.length === 0 ? (
@@ -206,11 +260,116 @@ function PhaseTitlesSection() {
           <div className="divide-y rounded-md border">
             {phaseTitles.map((title) => (
               <div key={title.id} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: title.color }} />
-                  <p className="text-sm font-medium">{title.label}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{title.label}</p>
+                    {title.notes && <p className="truncate text-xs text-muted-foreground">{title.notes}</p>}
+                  </div>
                 </div>
-                <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(title)}>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => startEdit(title)}>
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(title)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const CONFIGURABLE_LANES: Lane[] = ["RJF", "SUPPLIERS", "INTERNAL", "CLIENT"];
+
+function BlockTitlesSection() {
+  const [lane, setLane] = useState<Lane>(CONFIGURABLE_LANES[0]);
+  const [options, setOptions] = useState<LaneTitleOption[]>([]);
+  const [label, setLabel] = useState("");
+
+  useEffect(() => {
+    getLaneTitleOptions().then(setOptions);
+  }, []);
+
+  const optionsForLane = options.filter((o) => o.lane === lane);
+
+  async function handleAdd() {
+    if (!label.trim()) return;
+    try {
+      await addLaneTitleOption({ lane, label: label.trim() });
+      setOptions(await getLaneTitleOptions());
+      setLabel("");
+      toast.success("Title option added");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to add title option");
+    }
+  }
+
+  async function handleRemove(option: LaneTitleOption) {
+    try {
+      await removeLaneTitleOption(option.id);
+      setOptions(await getLaneTitleOptions());
+      toast.success("Title option removed");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to remove title option");
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Block Titles</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          Set a preset list of titles for a lane and its block edit dialog switches from free text to a dropdown of
+          just these options. Leave Tracker isn't configurable here - its blocks are picked by person instead.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Lane</span>
+            <Select value={lane} onValueChange={(v) => setLane(v as Lane)}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CONFIGURABLE_LANES.map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {LANE_LABELS[l]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium" htmlFor="lane-title-label">
+              Title
+            </label>
+            <Input id="lane-title-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Client Review" />
+          </div>
+          <Button onClick={handleAdd} disabled={!label.trim()}>
+            <Plus className="size-4" />
+            Add
+          </Button>
+        </div>
+
+        {optionsForLane.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No title options set for {LANE_LABELS[lane]} yet - its block edit dialog will use free text until you add
+            some here.
+          </p>
+        ) : (
+          <div className="divide-y rounded-md border">
+            {optionsForLane.map((option) => (
+              <div key={option.id} className="flex items-center justify-between px-4 py-3">
+                <p className="text-sm font-medium">{option.label}</p>
+                <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(option)}>
                   <Trash2 className="size-4" />
                 </Button>
               </div>

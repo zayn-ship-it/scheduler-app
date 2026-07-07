@@ -51,6 +51,15 @@ export interface PhaseTitle {
   id: string;
   label: string;
   color: string;
+  /** Internal organisational notes about this phase title - never shown on the public/live view. */
+  notes: string;
+}
+
+/** A preset title option for a given lane's blocks (managed in Settings), offered as a dropdown in BlockEditDialog. */
+export interface LaneTitleOption {
+  id: string;
+  lane: Lane;
+  label: string;
 }
 
 /**

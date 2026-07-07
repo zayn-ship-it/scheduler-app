@@ -23,6 +23,7 @@ export async function getPhaseTitles(): Promise<PhaseTitle[]> {
     id: p.id,
     label: p.label,
     color: p.color,
+    notes: p.notes ?? "",
   }));
 }
 
@@ -32,6 +33,7 @@ export async function addPhaseTitle(input: Omit<PhaseTitle, "id">): Promise<Phas
     id,
     label: input.label,
     color: input.color,
+    notes: input.notes,
   });
 
   if (error) throw error;
@@ -44,6 +46,7 @@ export async function updatePhaseTitle(updated: PhaseTitle): Promise<void> {
     .update({
       label: updated.label,
       color: updated.color,
+      notes: updated.notes,
     })
     .eq("id", updated.id);
 

@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/select";
 import { addBlock, removeBlock, updateBlock } from "@/lib/storage/projectRepository";
 import { getPeople } from "@/lib/storage/peopleRepository";
-import { LANE_LABELS, LANE_ORDER, type Lane, type Mode, type ScheduleBlock } from "@/lib/storage/types";
+import { getLaneTitleOptions } from "@/lib/storage/laneTitleOptionRepository";
+import { LANE_LABELS, LANE_ORDER, type Lane, type LaneTitleOption, type Mode, type ScheduleBlock } from "@/lib/storage/types";
 import { clampRangeToBounds } from "@/lib/dateUtils";
 import { COLOR_PRESETS } from "./colorPresets";
 import { cn } from "@/lib/utils";
@@ -51,9 +52,11 @@ function isExistingBlock(b: BlockEditDialogProps["block"]): b is ScheduleBlock {
 export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: BlockEditDialogProps) {
   const existing = isExistingBlock(block) ? block : null;
   const [people, setPeople] = useState<any[]>([]);
+  const [laneTitleOptions, setLaneTitleOptions] = useState<LaneTitleOption[]>([]);
 
   useEffect(() => {
     getPeople().then(setPeople);
+    getLaneTitleOptions().then(setLaneTitleOptions);
   }, []);
 
   // A stored timeRange is "HH:mm-HH:mm" (see handleSave) - split it back into the two <input type="time"> values for editing.
@@ -74,6 +77,8 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
 
   const showColorPicker = lane === "RJF" || lane === "CLIENT";
   const showExternalLink = lane === "CLIENT";
+  const isLeaveTracker = lane === "LEAVE_TRACKER";
+  const titleOptionsForLane = laneTitleOptions.filter((o) => o.lane === lane);
 
   useEffect(() => {
     if (!showColorPicker) {
@@ -98,9 +103,13 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
 
     const timeRange = timeStart && timeEnd ? `${timeStart}-${timeEnd}` : timeStart || "";
 
+    const resolvedTitle = isLeaveTracker
+      ? people.find((p) => p.id === personId)?.name ?? "Leave"
+      : title;
+
     const payload = {
       lane,
-      title,
+      title: resolvedTitle,
       subHeading,
       timeRange,
       mode,
@@ -182,10 +191,27 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Client Review" />
-          </div>
+          {!isLeaveTracker && (
+            <div className="flex flex-col gap-2">
+              <Label>Title</Label>
+              {titleOptionsForLane.length > 0 ? (
+                <Select value={title} onValueChange={setTitle}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a title" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {titleOptionsForLane.map((o) => (
+                      <SelectItem key={o.id} value={o.label}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Client Review" />
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-2">
             <Label>Sub-heading</Label>
@@ -241,7 +267,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>Linked person (optional, mainly for Leave Tracker)</Label>
+            <Label>{isLeaveTracker ? "Person" : "Linked person (optional, mainly for Leave Tracker)"}</Label>
             <Select value={personId ?? "none"} onValueChange={(v) => setPersonId(v === "none" ? null : v)}>
               <SelectTrigger>
                 <SelectValue />
@@ -299,7 +325,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
           ) : (
             <span />
           )}
-          <Button onClick={handleSave} disabled={!title.trim()}>
+          <Button onClick={handleSave} disabled={isLeaveTracker ? !personId : !title.trim()}>
             Save
           </Button>
         </DialogFooter>

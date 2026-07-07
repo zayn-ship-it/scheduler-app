@@ -15,7 +15,7 @@ export function BackOfficeLayout() {
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 text-lg font-semibold">
-            <img src="/app-icon.png" alt="" className="h-3.5 w-3.5" />
+            <img src="/app-icon.png" alt="" className="size-8" />
             Client Schedule
           </div>
           <nav className="flex items-center gap-1">
