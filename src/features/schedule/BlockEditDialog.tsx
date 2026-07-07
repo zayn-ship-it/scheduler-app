@@ -305,7 +305,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <Label>Information (one per line)</Label>
+              <Label>Deliverables</Label>
               <DeliverablePicker
                 deliverables={deliverables}
                 selectedIds={deliverableIds}
@@ -418,7 +418,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   );
 }
 
-/** Small "+" button that opens a checkbox list of the project's deliverables to attach to this block's Information section. */
+/** Small "+" button that opens a checkbox list of the project's deliverables to attach to this block's Deliverables section. */
 function DeliverablePicker({
   deliverables,
   selectedIds,
@@ -435,7 +435,7 @@ function DeliverablePicker({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button type="button" size="icon" variant="outline" className="size-6" disabled={deliverables.length === 0}>
+        <Button type="button" size="icon" className="size-6" disabled={deliverables.length === 0}>
           <span className="text-sm leading-none">+</span>
         </Button>
       </PopoverTrigger>
