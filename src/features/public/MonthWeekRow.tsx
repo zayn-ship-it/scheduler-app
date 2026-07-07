@@ -44,6 +44,8 @@ const NOTE_LINE_HEIGHT = 16;
 /** Vertical gap between the title line and each note line, and between notes themselves (matches the `gap-1` class below). */
 const CONTENT_GAP = 4;
 const TRACK_GAP = 3;
+/** RJF/Client blocks never render shorter than this, even with no information lines. */
+const MIN_BLOCK_HEIGHT = 48;
 
 /** The link's display text: the block's custom title if set, otherwise a sensible default. */
 function linkText(block: ScheduleBlock): string {
@@ -97,7 +99,7 @@ function assignSegmentRows(segments: Segment[]): number[] {
 
 /** How tall a segment needs to be to fit its title line plus one line per info line, un-truncated. */
 function segmentHeight(segment: Segment): number {
-  return BLOCK_BASE_HEIGHT + segment.lines.length * (NOTE_LINE_HEIGHT + CONTENT_GAP);
+  return Math.max(MIN_BLOCK_HEIGHT, BLOCK_BASE_HEIGHT + segment.lines.length * (NOTE_LINE_HEIGHT + CONTENT_GAP));
 }
 
 /** Assigns each segment a top offset + height: segments sharing a stacked row share that row's tallest height. */
