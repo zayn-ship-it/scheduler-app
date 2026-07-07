@@ -22,6 +22,7 @@
  * dialog.
  */
 import { useRef, useState, useEffect } from "react";
+import { ClipboardList } from "lucide-react";
 import { updateBlock } from "@/lib/storage/projectRepository";
 import { getPersonById } from "@/lib/storage/peopleRepository";
 import type { Deliverable, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
@@ -87,6 +88,7 @@ export function ScheduleBlock({
   const isNeutralLane = block.lane === "INTERNAL" || block.lane === "SUPPLIERS" || block.lane === "LEAVE_TRACKER";
   const textColor = isNeutralLane ? undefined : getContrastTextColor(block.color);
   const isDarkText = textColor === "#0f172a";
+  const infoCount = block.information.length + block.deliverableIds.length;
 
   return (
     <>
@@ -136,6 +138,15 @@ export function ScheduleBlock({
               )}
             >
               {[block.timeRange, block.mode].filter(Boolean).join("  ")}
+            </span>
+          )}
+          {infoCount > 0 && (
+            <span
+              className="flex shrink-0 items-center gap-0.5 opacity-90"
+              title={`${infoCount} information line${infoCount === 1 ? "" : "s"} attached`}
+            >
+              <ClipboardList className="size-3" />
+              <span className="text-[9px] font-medium leading-none">{infoCount}</span>
             </span>
           )}
         </div>
