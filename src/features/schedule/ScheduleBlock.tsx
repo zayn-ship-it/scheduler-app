@@ -29,6 +29,7 @@ import { dayIndex, spanLengthDays } from "@/lib/dateUtils";
 import { DAY_COLUMN_WIDTH_PX, BLOCK_ROW_HEIGHT_PX } from "./gridConstants";
 import { useBlockDragResize } from "./useBlockDragResize";
 import { BlockEditDialog } from "./BlockEditDialog";
+import { getContrastTextColor } from "./colorPresets";
 import { cn } from "@/lib/utils";
 
 interface ScheduleBlockProps {
@@ -84,13 +85,15 @@ export function ScheduleBlock({
   const startIdx = Math.max(dayIndex(days, previewStartDate), 0);
   const span = spanLengthDays(previewStartDate, previewEndDate);
   const isNeutralLane = block.lane === "INTERNAL" || block.lane === "SUPPLIERS" || block.lane === "LEAVE_TRACKER";
+  const textColor = isNeutralLane ? undefined : getContrastTextColor(block.color);
+  const isDarkText = textColor === "#0f172a";
 
   return (
     <>
       <div
         className={cn(
           "group absolute flex flex-col justify-center overflow-hidden rounded-md px-2 py-1 shadow-sm select-none",
-          isNeutralLane ? "border border-foreground/30 bg-transparent text-foreground" : "text-white",
+          isNeutralLane && "border border-foreground/30 bg-transparent text-foreground",
           !readOnly && "cursor-grab active:cursor-grabbing",
           isDragging && "z-30 opacity-90 shadow-lg",
         )}
@@ -100,6 +103,7 @@ export function ScheduleBlock({
           top: rowIndex * BLOCK_ROW_HEIGHT_PX + 2,
           height: BLOCK_ROW_HEIGHT_PX - 4,
           backgroundColor: isNeutralLane ? undefined : block.color,
+          color: textColor,
         }}
         onPointerDown={onBodyPointerDown}
         onClick={() => {
@@ -118,14 +122,19 @@ export function ScheduleBlock({
             className="absolute left-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onLeftHandlePointerDown}
           >
-            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : "bg-white/70")} />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-black/40" : "bg-white/70")} />
           </div>
         )}
 
         <div className="flex min-w-0 items-center gap-1.5">
           <p className="truncate text-xs font-semibold leading-tight">{block.title || "(untitled)"}</p>
           {(block.timeRange || block.mode) && (
-            <span className="shrink-0 whitespace-nowrap rounded-full border border-white/70 px-1.5 py-[1px] text-[9px] leading-tight">
+            <span
+              className={cn(
+                "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
+                isNeutralLane || isDarkText ? "border-foreground/40" : "border-white/70",
+              )}
+            >
               {[block.timeRange, block.mode].filter(Boolean).join("  ")}
             </span>
           )}
@@ -137,7 +146,7 @@ export function ScheduleBlock({
             className="absolute right-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onRightHandlePointerDown}
           >
-            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : "bg-white/70")} />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-black/40" : "bg-white/70")} />
           </div>
         )}
       </div>

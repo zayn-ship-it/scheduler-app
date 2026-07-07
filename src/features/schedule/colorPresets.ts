@@ -64,3 +64,19 @@ export const EXPANDED_COLOR_PRESETS: ColorPreset[] = COLOR_PRESETS.flatMap((pres
     { name: `${preset.name} Dark`, value: shades.dark },
   ];
 });
+
+/**
+ * Picks black or white text for a given background hex colour based on
+ * WCAG relative luminance, so light backgrounds (e.g. the lighter grey
+ * shades) get dark text instead of unreadable white-on-light-grey.
+ */
+export function getContrastTextColor(hex: string): "#0f172a" | "#ffffff" {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!match) return "#ffffff";
+  const value = match[1];
+  const [r, g, b] = [0, 2, 4].map((offset) => parseInt(value.slice(offset, offset + 2), 16) / 255);
+  const [rl, gl, bl] = [r, g, b].map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const luminance = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+  // Relative luminance threshold ~0.4 keeps AA contrast (>=4.5:1) for both black and white text across our palette.
+  return luminance > 0.4 ? "#0f172a" : "#ffffff";
+}

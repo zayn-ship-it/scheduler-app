@@ -85,7 +85,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const [mode, setMode] = useState<Mode>(existing?.mode ?? null);
   const [informationText, setInformationText] = useState((existing?.information ?? []).join("\n"));
   const [deliverableIds, setDeliverableIds] = useState<string[]>(existing?.deliverableIds ?? []);
-  const [color, setColor] = useState(existing?.color ?? COLOR_PRESETS[6].value);
+  const [color, setColor] = useState(existing?.color ?? (block.lane === "RJF" ? GREY_SHADES[2].value : COLOR_PRESETS[6].value));
   const [personId, setPersonId] = useState<string | null>(existing?.personId ?? null);
   const [externalLink, setExternalLink] = useState(existing?.externalLink ?? "");
   const [linkLabel, setLinkLabel] = useState(existing?.linkLabel ?? "");
@@ -94,13 +94,13 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const showExternalLink = lane === "RJF" || lane === "CLIENT";
   const isLeaveTracker = lane === "LEAVE_TRACKER";
   const titleOptionsForLane = laneTitleOptions.filter((o) => o.lane === lane);
-  const colorPresetsForLane = lane === "RJF" ? [...COLOR_PRESETS, ...GREY_SHADES] : COLOR_PRESETS;
+  const colorPresetsForLane = lane === "RJF" ? GREY_SHADES : COLOR_PRESETS;
 
   useEffect(() => {
     if (!showColorPicker) {
       setColor("");
     } else if (!color) {
-      setColor(COLOR_PRESETS[6].value);
+      setColor(lane === "RJF" ? GREY_SHADES[2].value : COLOR_PRESETS[6].value);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lane]);

@@ -33,6 +33,7 @@ import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate } from "@/lib/dateUtils";
 import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
+import { getContrastTextColor } from "@/features/schedule/colorPresets";
 import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
@@ -182,12 +183,14 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
     <div className="absolute inset-x-0" style={{ top: trackTop, height: totalHeight }}>
       {segments.map((segment, index) => {
         const { block } = segment;
+        const textColor = getContrastTextColor(block.color);
+        const isDarkText = textColor === "#0f172a";
         return (
           <HoverCard key={block.id} openDelay={150}>
             <HoverCardTrigger asChild>
               <div
                 className={cn(
-                  "pointer-events-auto absolute flex flex-col gap-1 overflow-hidden px-2 py-1 text-white",
+                  "pointer-events-auto absolute flex flex-col gap-1 overflow-hidden px-2 py-1",
                   !segment.continuesBefore && "rounded-l-md",
                   !segment.continuesAfter && "rounded-r-md",
                 )}
@@ -197,12 +200,18 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                   top: tops[index],
                   height: heights[index],
                   backgroundColor: block.color,
+                  color: textColor,
                 }}
               >
                 <div className="flex min-w-0 items-center gap-1.5">
                   <span className="truncate text-[12px] font-medium leading-tight">{block.title || "(untitled)"}</span>
                   {blockBadgeText(block) && (
-                    <span className="shrink-0 whitespace-nowrap rounded-full border border-white/70 px-1.5 py-[1px] text-[9px] leading-tight">
+                    <span
+                      className={cn(
+                        "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
+                        isDarkText ? "border-foreground/40" : "border-white/70",
+                      )}
+                    >
                       {blockBadgeText(block)}
                     </span>
                   )}
@@ -211,7 +220,7 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                       href={block.externalLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 text-white/90 hover:text-white"
+                      className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
                       onClick={(e) => e.stopPropagation()}
                       title={linkText(block)}
                     >
