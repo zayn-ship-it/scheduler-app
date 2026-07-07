@@ -21,8 +21,7 @@
  * that (not React state) to decide whether the click should open the edit
  * dialog.
  */
-import { useRef, useState, useEffect } from "react";
-import { ClipboardList } from "lucide-react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { updateBlock } from "@/lib/storage/projectRepository";
 import { getPersonById } from "@/lib/storage/peopleRepository";
 import type { Deliverable, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
@@ -31,6 +30,7 @@ import { DAY_COLUMN_WIDTH_PX, BLOCK_ROW_HEIGHT_PX } from "./gridConstants";
 import { useBlockDragResize } from "./useBlockDragResize";
 import { BlockEditDialog } from "./BlockEditDialog";
 import { getContrastTextColor } from "./colorPresets";
+import { infoLines } from "./deliverableFormat";
 import { cn } from "@/lib/utils";
 
 interface ScheduleBlockProps {
@@ -88,13 +88,14 @@ export function ScheduleBlock({
   const isNeutralLane = block.lane === "INTERNAL" || block.lane === "SUPPLIERS" || block.lane === "LEAVE_TRACKER";
   const textColor = isNeutralLane ? undefined : getContrastTextColor(block.color);
   const isDarkText = textColor === "#0f172a";
-  const infoCount = block.information.length + block.deliverableIds.length;
+  const deliverablesById = useMemo(() => new Map(deliverables.map((d) => [d.id, d])), [deliverables]);
+  const lines = infoLines(block, deliverablesById);
 
   return (
     <>
       <div
         className={cn(
-          "group absolute flex flex-col justify-center overflow-hidden rounded-md px-2 py-1 shadow-sm select-none",
+          "group absolute flex flex-col justify-start overflow-hidden rounded-md px-2 py-1 shadow-sm select-none",
           isNeutralLane && "border border-foreground/30 bg-transparent text-foreground",
           !readOnly && "cursor-grab active:cursor-grabbing",
           isDragging && "z-30 opacity-90 shadow-lg",
@@ -140,17 +141,13 @@ export function ScheduleBlock({
               {[block.timeRange, block.mode].filter(Boolean).join("  ")}
             </span>
           )}
-          {infoCount > 0 && (
-            <span
-              className="flex shrink-0 items-center gap-0.5 opacity-90"
-              title={`${infoCount} information line${infoCount === 1 ? "" : "s"} attached`}
-            >
-              <ClipboardList className="size-3" />
-              <span className="text-[9px] font-medium leading-none">{infoCount}</span>
-            </span>
-          )}
         </div>
         {person?.name && <p className="truncate text-[10px] leading-tight opacity-80">{person.name}</p>}
+        {lines.map((line, i) => (
+          <p key={i} className="truncate text-[10px] leading-tight opacity-90">
+            {line}
+          </p>
+        ))}
 
         {!readOnly && (
           <div

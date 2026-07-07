@@ -288,7 +288,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
                   if (!deliverable) return null;
                   return (
                     <Badge key={id} variant="secondary" className="gap-1 pr-1">
-                      {deliverable.identifier || deliverable.description || "Untitled deliverable"}
+                      {deliverable.description || deliverable.identifier || "Untitled deliverable"}
                       <button
                         type="button"
                         onClick={() => setDeliverableIds((prev) => prev.filter((existingId) => existingId !== id))}
@@ -416,8 +416,10 @@ function DeliverablePicker({
                   className="mt-0.5"
                 />
                 <span>
-                  <span className="font-medium">{deliverable.identifier || "(untitled)"}</span>
-                  {deliverable.description && <span className="text-muted-foreground"> — {deliverable.description}</span>}
+                  <span className="font-medium">{deliverable.description || deliverable.identifier || "(untitled)"}</span>
+                  {deliverable.description && deliverable.identifier && (
+                    <span className="text-muted-foreground"> — {deliverable.identifier}</span>
+                  )}
                 </span>
               </label>
             ))}

@@ -34,6 +34,7 @@ import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate } from "@/lib/dateUtils";
 import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
 import { getContrastTextColor } from "@/features/schedule/colorPresets";
+import { infoLines } from "@/features/schedule/deliverableFormat";
 import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
@@ -49,21 +50,6 @@ function linkText(block: ScheduleBlock): string {
   return block.linkLabel || "Open meeting link";
 }
 
-/** A deliverable rendered as a single line, e.g. "WEB001 — Squeeze Page · 30s · 16:9 · Qty 2". */
-function deliverableLine(deliverable: Deliverable): string {
-  const label = [deliverable.identifier, deliverable.description].filter(Boolean).join(" — ");
-  const meta = [deliverable.duration, deliverable.aspectRatio, `Qty ${deliverable.qty}`].filter(Boolean).join(" · ");
-  return meta ? `${label} · ${meta}` : label;
-}
-
-/** A block's combined information: its own free-text lines, then each attached deliverable as its own line. */
-function infoLines(block: ScheduleBlock, deliverablesById: Map<string, Deliverable>): string[] {
-  const attached = block.deliverableIds
-    .map((id) => deliverablesById.get(id))
-    .filter((d): d is Deliverable => Boolean(d))
-    .map(deliverableLine);
-  return [...block.information, ...attached];
-}
 
 interface Segment {
   block: ScheduleBlock;

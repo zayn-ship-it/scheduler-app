@@ -13,5 +13,5 @@ export const DAY_COLUMN_WIDTH_PX = 110;
 /** Width of the sticky left-hand label column (lane names, row labels). */
 export const LANE_LABEL_WIDTH_PX = 150;
 
-/** Height of a single stacked "row" within a lane, when multiple blocks overlap in date range. */
-export const BLOCK_ROW_HEIGHT_PX = 76;
+/** Height of a single stacked "row" within a lane, when multiple blocks overlap in date range. Tall enough to show a few attached information/deliverable lines. */
+export const BLOCK_ROW_HEIGHT_PX = 96;
