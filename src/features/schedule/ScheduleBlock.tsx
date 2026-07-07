@@ -29,7 +29,7 @@ import { dayIndex, spanLengthDays } from "@/lib/dateUtils";
 import { DAY_COLUMN_WIDTH_PX, BLOCK_ROW_HEIGHT_PX } from "./gridConstants";
 import { useBlockDragResize } from "./useBlockDragResize";
 import { BlockEditDialog } from "./BlockEditDialog";
-import { getContrastTextColor } from "./colorPresets";
+import { getContrastTextColor, RJF_BLOCK_COLOR } from "./colorPresets";
 import { infoLines } from "./deliverableFormat";
 import { cn } from "@/lib/utils";
 
@@ -86,8 +86,10 @@ export function ScheduleBlock({
   const startIdx = Math.max(dayIndex(days, previewStartDate), 0);
   const span = spanLengthDays(previewStartDate, previewEndDate);
   const isNeutralLane = block.lane === "INTERNAL" || block.lane === "SUPPLIERS" || block.lane === "LEAVE_TRACKER";
-  const textColor = isNeutralLane ? undefined : getContrastTextColor(block.color);
-  const isDarkText = textColor === "#0f172a";
+  // RJF never offers a colour choice - always render the brand black regardless of what's stored (covers older blocks saved before this was locked down).
+  const displayColor = block.lane === "RJF" ? RJF_BLOCK_COLOR : block.color;
+  const textColor = isNeutralLane ? undefined : getContrastTextColor(displayColor);
+  const isDarkText = textColor === RJF_BLOCK_COLOR;
   const deliverablesById = useMemo(() => new Map(deliverables.map((d) => [d.id, d])), [deliverables]);
   const lines = infoLines(block, deliverablesById);
 
@@ -105,7 +107,7 @@ export function ScheduleBlock({
           width: span * DAY_COLUMN_WIDTH_PX - 4,
           top: rowIndex * BLOCK_ROW_HEIGHT_PX + 2,
           height: BLOCK_ROW_HEIGHT_PX - 4,
-          backgroundColor: isNeutralLane ? undefined : block.color,
+          backgroundColor: isNeutralLane ? undefined : displayColor,
           color: textColor,
         }}
         onPointerDown={onBodyPointerDown}
@@ -125,7 +127,7 @@ export function ScheduleBlock({
             className="absolute left-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onLeftHandlePointerDown}
           >
-            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-black/40" : "bg-white/70")} />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-[#29160F]/40" : "bg-white/70")} />
           </div>
         )}
 
@@ -154,7 +156,7 @@ export function ScheduleBlock({
             className="absolute right-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onRightHandlePointerDown}
           >
-            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-black/40" : "bg-white/70")} />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-[#29160F]/40" : "bg-white/70")} />
           </div>
         )}
       </div>

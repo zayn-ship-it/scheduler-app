@@ -33,7 +33,7 @@ import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate } from "@/lib/dateUtils";
 import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
-import { getContrastTextColor } from "@/features/schedule/colorPresets";
+import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
 import { infoLines } from "@/features/schedule/deliverableFormat";
 import { cn } from "@/lib/utils";
 
@@ -169,8 +169,10 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
     <div className="absolute inset-x-0" style={{ top: trackTop, height: totalHeight }}>
       {segments.map((segment, index) => {
         const { block } = segment;
-        const textColor = getContrastTextColor(block.color);
-        const isDarkText = textColor === "#0f172a";
+        // RJF never offers a colour choice - always render the brand black regardless of what's stored (covers older blocks saved before this was locked down).
+        const displayColor = block.lane === "RJF" ? RJF_BLOCK_COLOR : block.color;
+        const textColor = getContrastTextColor(displayColor);
+        const isDarkText = textColor === RJF_BLOCK_COLOR;
         return (
           <HoverCard key={block.id} openDelay={150}>
             <HoverCardTrigger asChild>
@@ -185,7 +187,7 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                   width: `${(segment.colSpan / 5) * 100}%`,
                   top: tops[index],
                   height: heights[index],
-                  backgroundColor: block.color,
+                  backgroundColor: displayColor,
                   color: textColor,
                 }}
               >

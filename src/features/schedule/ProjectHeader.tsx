@@ -23,6 +23,7 @@ export function ProjectHeader({ project }: { project: Project }) {
 
   return (
     <div className="rounded-md border p-4">
+      <img src="/rjf-logo.svg" alt="RJF" className="mb-3 h-auto w-[180px]" />
       <h1 className="mb-1 text-xl font-bold">{project.projectName || "Untitled Project"}</h1>
       <p className="mb-4 text-sm text-muted-foreground">
         {formatDisplayDate(project.startDate)} – {formatDisplayDate(project.endDate)}

@@ -45,7 +45,7 @@ import {
   type ScheduleBlock,
 } from "@/lib/storage/types";
 import { clampRangeToBounds } from "@/lib/dateUtils";
-import { COLOR_PRESETS } from "./colorPresets";
+import { COLOR_PRESETS, RJF_BLOCK_COLOR } from "./colorPresets";
 import { cn } from "@/lib/utils";
 
 interface BlockEditDialogProps {
@@ -85,8 +85,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const [mode, setMode] = useState<Mode>(existing?.mode ?? null);
   const [informationText, setInformationText] = useState((existing?.information ?? []).join("\n"));
   const [deliverableIds, setDeliverableIds] = useState<string[]>(existing?.deliverableIds ?? []);
-  const RJF_BLOCK_COLOR = "#000000";
-  const [color, setColor] = useState(existing?.color ?? (block.lane === "RJF" ? RJF_BLOCK_COLOR : COLOR_PRESETS[6].value));
+  const [color, setColor] = useState(block.lane === "RJF" ? RJF_BLOCK_COLOR : existing?.color ?? COLOR_PRESETS[6].value);
   const [personId, setPersonId] = useState<string | null>(existing?.personId ?? null);
   const [externalLink, setExternalLink] = useState(existing?.externalLink ?? "");
   const [linkLabel, setLinkLabel] = useState(existing?.linkLabel ?? "");

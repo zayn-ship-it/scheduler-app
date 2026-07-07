@@ -12,6 +12,9 @@ export interface ColorPreset {
   value: string;
 }
 
+/** The brand's near-black - RJF blocks always render in this colour, with no other colour choice offered. */
+export const RJF_BLOCK_COLOR = "#29160F";
+
 export const COLOR_PRESETS: ColorPreset[] = [
   { name: "Slate", value: "#475569" },
   { name: "Red", value: "#dc2626" },
@@ -60,7 +63,7 @@ export const EXPANDED_COLOR_PRESETS: ColorPreset[] = COLOR_PRESETS.flatMap((pres
  * WCAG relative luminance, so light backgrounds (e.g. the lighter grey
  * shades) get dark text instead of unreadable white-on-light-grey.
  */
-export function getContrastTextColor(hex: string): "#0f172a" | "#ffffff" {
+export function getContrastTextColor(hex: string): typeof RJF_BLOCK_COLOR | "#ffffff" {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex);
   if (!match) return "#ffffff";
   const value = match[1];
@@ -68,5 +71,5 @@ export function getContrastTextColor(hex: string): "#0f172a" | "#ffffff" {
   const [rl, gl, bl] = [r, g, b].map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
   const luminance = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
   // Relative luminance threshold ~0.4 keeps AA contrast (>=4.5:1) for both black and white text across our palette.
-  return luminance > 0.4 ? "#0f172a" : "#ffffff";
+  return luminance > 0.4 ? RJF_BLOCK_COLOR : "#ffffff";
 }
