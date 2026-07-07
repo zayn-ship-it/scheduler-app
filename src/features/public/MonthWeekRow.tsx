@@ -192,7 +192,7 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                 }}
               >
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-[15px] font-medium leading-tight">{block.title || "(untitled)"}</span>
+                  <span className="truncate text-[14px] font-medium leading-tight">{block.title || "(untitled)"}</span>
                   {blockBadgeText(block) && (
                     <span
                       className={cn(
