@@ -31,7 +31,7 @@ import { ExternalLink } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
-import { formatDisplayDate } from "@/lib/dateUtils";
+import { formatDisplayDate, todayIso } from "@/lib/dateUtils";
 import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
 import { infoLines } from "@/features/schedule/deliverableFormat";
@@ -274,6 +274,7 @@ export function MonthWeekRow({
       {days.map((day) => {
         const holiday = getHolidayForDate(day);
         const inMonth = isDateInMonth(day, monthAnchor);
+        const isToday = day === todayIso();
         const phaseEntry = phaseForDay(phaseEntries, day);
         const phaseTitle = phaseEntry ? phaseTitlesById.get(phaseEntry.phaseTitleId) : undefined;
         return (
@@ -282,6 +283,7 @@ export function MonthWeekRow({
             className={cn(
               "relative flex-1 border-l p-1",
               !inMonth && "bg-muted/40 opacity-50",
+              isToday && "bg-muted/70",
               holiday && "bg-[repeating-linear-gradient(45deg,theme(colors.muted.DEFAULT),theme(colors.muted.DEFAULT)_6px,transparent_6px,transparent_12px)]",
             )}
             style={{ minHeight: rowContentHeight }}
