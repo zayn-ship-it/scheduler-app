@@ -173,6 +173,9 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
         const displayColor = block.lane === "RJF" ? RJF_BLOCK_COLOR : block.color;
         const textColor = getContrastTextColor(displayColor);
         const isDarkText = textColor === RJF_BLOCK_COLOR;
+        // A genuine start/end edge gets a small gap from the day boundary; an edge that continues across a row wrap stays flush.
+        const leftInset = segment.continuesBefore ? 0 : 4;
+        const rightInset = segment.continuesAfter ? 0 : 4;
         return (
           <HoverCard key={block.id} openDelay={150}>
             <HoverCardTrigger asChild>
@@ -183,8 +186,8 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                   !segment.continuesAfter && "rounded-r-md",
                 )}
                 style={{
-                  left: `${(segment.colStart / 5) * 100}%`,
-                  width: `${(segment.colSpan / 5) * 100}%`,
+                  left: `calc(${(segment.colStart / 5) * 100}% + ${leftInset}px)`,
+                  width: `calc(${(segment.colSpan / 5) * 100}% - ${leftInset + rightInset}px)`,
                   top: tops[index],
                   height: heights[index],
                   backgroundColor: displayColor,
