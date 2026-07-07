@@ -65,6 +65,7 @@ export function ScheduleGrid({ project, readOnly, onProjectChanged }: ScheduleGr
             projectId={project.id}
             lane={lane}
             blocks={blocksByLane.get(lane) ?? []}
+            deliverables={project.deliverables}
             days={days}
             bounds={bounds}
             readOnly={readOnly}

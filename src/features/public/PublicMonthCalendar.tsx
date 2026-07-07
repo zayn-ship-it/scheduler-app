@@ -95,6 +95,7 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
           phaseTitles={phaseTitles}
           rjfBlocks={rjfBlocks}
           clientBlocks={clientBlocks}
+          deliverables={project.deliverables}
         />
       ))}
 

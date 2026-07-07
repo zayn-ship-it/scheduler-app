@@ -24,7 +24,7 @@
 import { useRef, useState, useEffect } from "react";
 import { updateBlock } from "@/lib/storage/projectRepository";
 import { getPersonById } from "@/lib/storage/peopleRepository";
-import type { ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
+import type { Deliverable, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
 import { dayIndex, spanLengthDays } from "@/lib/dateUtils";
 import { DAY_COLUMN_WIDTH_PX, BLOCK_ROW_HEIGHT_PX } from "./gridConstants";
 import { useBlockDragResize } from "./useBlockDragResize";
@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 interface ScheduleBlockProps {
   projectId: string;
   block: ScheduleBlockType;
+  deliverables: Deliverable[];
   days: string[];
   bounds: { startDate: string; endDate: string };
   rowIndex: number;
@@ -44,6 +45,7 @@ interface ScheduleBlockProps {
 export function ScheduleBlock({
   projectId,
   block,
+  deliverables,
   days,
   bounds,
   rowIndex,
@@ -128,7 +130,6 @@ export function ScheduleBlock({
             </span>
           )}
         </div>
-        {block.subHeading && <p className="truncate text-[11px] leading-tight opacity-90">{block.subHeading}</p>}
         {person?.name && <p className="truncate text-[10px] leading-tight opacity-80">{person.name}</p>}
 
         {!readOnly && (
@@ -146,6 +147,7 @@ export function ScheduleBlock({
           projectId={projectId}
           block={block}
           bounds={bounds}
+          deliverables={deliverables}
           onClose={() => setIsEditOpen(false)}
           onSaved={onProjectChanged}
         />

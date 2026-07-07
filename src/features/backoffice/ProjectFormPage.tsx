@@ -19,7 +19,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   createProject,
   defaultNewProjectDateRange,
@@ -42,6 +43,7 @@ import { getPeople } from "@/lib/storage/peopleRepository";
 import type { Deliverable, Project } from "@/lib/storage/types";
 import { todayIso } from "@/lib/dateUtils";
 import { DeliverablesTable } from "./DeliverablesTable";
+import { DeliverablesProgress } from "@/features/schedule/DeliverablesProgress";
 import { ExportToSheetButton } from "./ExportToSheetButton";
 import { ScheduleGrid } from "@/features/schedule/ScheduleGrid";
 
@@ -142,7 +144,7 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
     }
 
     try {
-      await patchProject(project.id, { ...fields, deliverables });
+      await patchProject(project.id, fields);
       await refreshFromStorage();
       toast.success("Project details saved");
     } catch (error) {
@@ -216,9 +218,20 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
 
           <Separator />
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <Label>Deliverables</Label>
-            <DeliverablesTable deliverables={deliverables} onChange={setDeliverables} />
+            {mode === "edit" && project && <DeliverablesProgress deliverables={project.deliverables} />}
+            {mode === "create" ? (
+              <NewProjectDeliverablesFields deliverables={deliverables} onChange={setDeliverables} />
+            ) : (
+              project && (
+                <DeliverablesTable
+                  projectId={project.id}
+                  deliverables={project.deliverables}
+                  onProjectChanged={refreshFromStorage}
+                />
+              )
+            )}
           </div>
 
           <div>
@@ -243,6 +256,99 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+/**
+ * Local-only deliverables editor used only in "create" mode, before the
+ * project (and therefore a projectId to persist against) exists yet. Once
+ * the project is created, deliverables switch to the self-persisting
+ * DeliverablesTable.
+ */
+function NewProjectDeliverablesFields({
+  deliverables,
+  onChange,
+}: {
+  deliverables: Deliverable[];
+  onChange: (deliverables: Deliverable[]) => void;
+}) {
+  function addRow() {
+    onChange([
+      ...deliverables,
+      { id: crypto.randomUUID(), identifier: "", description: "", qty: 1, duration: "", aspectRatio: "", completed: false },
+    ]);
+  }
+
+  function updateRow(id: string, patch: Partial<Deliverable>) {
+    onChange(deliverables.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+  }
+
+  function removeRow(id: string) {
+    onChange(deliverables.filter((d) => d.id !== id));
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-28">Identifier</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="w-24">Duration</TableHead>
+            <TableHead className="w-24">Aspect Ratio</TableHead>
+            <TableHead className="w-20">Qty</TableHead>
+            <TableHead className="w-10" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {deliverables.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell>
+                <Input
+                  value={row.identifier}
+                  placeholder="WEB001"
+                  onChange={(e) => updateRow(row.id, { identifier: e.target.value })}
+                />
+              </TableCell>
+              <TableCell>
+                <Input
+                  value={row.description}
+                  placeholder="Single Page Squeeze Page (Webflow)"
+                  onChange={(e) => updateRow(row.id, { description: e.target.value })}
+                />
+              </TableCell>
+              <TableCell>
+                <Input value={row.duration} placeholder="30s" onChange={(e) => updateRow(row.id, { duration: e.target.value })} />
+              </TableCell>
+              <TableCell>
+                <Input
+                  value={row.aspectRatio}
+                  placeholder="16:9"
+                  onChange={(e) => updateRow(row.id, { aspectRatio: e.target.value })}
+                />
+              </TableCell>
+              <TableCell>
+                <Input
+                  type="number"
+                  min={0}
+                  value={row.qty}
+                  onChange={(e) => updateRow(row.id, { qty: Number(e.target.value) })}
+                />
+              </TableCell>
+              <TableCell>
+                <Button size="icon" variant="ghost" onClick={() => removeRow(row.id)}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Button size="sm" variant="outline" onClick={addRow} className="self-start">
+        <Plus className="size-4" />
+        Add Deliverable
+      </Button>
     </div>
   );
 }

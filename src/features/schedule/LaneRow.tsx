@@ -20,7 +20,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Lane, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
+import type { Deliverable, Lane, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
 import { LANE_LABELS } from "@/lib/storage/types";
 import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX, BLOCK_ROW_HEIGHT_PX } from "./gridConstants";
@@ -51,13 +51,14 @@ interface LaneRowProps {
   projectId: string;
   lane: Lane;
   blocks: ScheduleBlockType[];
+  deliverables: Deliverable[];
   days: string[];
   bounds: { startDate: string; endDate: string };
   readOnly: boolean;
   onProjectChanged: () => void;
 }
 
-export function LaneRow({ projectId, lane, blocks, days, bounds, readOnly, onProjectChanged }: LaneRowProps) {
+export function LaneRow({ projectId, lane, blocks, deliverables, days, bounds, readOnly, onProjectChanged }: LaneRowProps) {
   // The date to seed the add-block dialog with, or null when it's closed. Set either by the
   // sticky "+" button (first visible day) or by clicking an empty day cell (that exact day).
   const [addSeedDate, setAddSeedDate] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export function LaneRow({ projectId, lane, blocks, days, bounds, readOnly, onPro
             key={block.id}
             projectId={projectId}
             block={block}
+            deliverables={deliverables}
             days={days}
             bounds={bounds}
             rowIndex={rowAssignment.get(block.id) ?? 0}
@@ -125,6 +127,7 @@ export function LaneRow({ projectId, lane, blocks, days, bounds, readOnly, onPro
           projectId={projectId}
           block={{ lane, startDate: addSeedDate, endDate: addSeedDate }}
           bounds={bounds}
+          deliverables={deliverables}
           onClose={() => setAddSeedDate(null)}
           onSaved={onProjectChanged}
         />

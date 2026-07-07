@@ -20,17 +20,19 @@
  * neighbouring row.
  *
  * Each RJF/Client block renders as: title + a rounded time/mode "badge" on
- * the same first line, then its own notes underneath (one line per note) -
- * the block's row height grows to fit however many note lines it has rather
- * than truncating them. Hovering a block also opens a HoverCard with the
- * full detail (title, dates, time, sub-heading, mode, link, notes).
+ * the same first line, then a list of "information" lines underneath - its
+ * own free-text lines plus any deliverables attached to it (with their
+ * duration/aspect ratio/qty appended) - one below another. The block's row
+ * height grows to fit however many lines it has rather than truncating them.
+ * Hovering a block also opens a HoverCard with the full detail (title,
+ * dates, time, mode, link, information).
  */
 import { ExternalLink } from "lucide-react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate } from "@/lib/dateUtils";
-import type { PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
+import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
 import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
@@ -46,8 +48,25 @@ function linkText(block: ScheduleBlock): string {
   return block.linkLabel || "Open meeting link";
 }
 
+/** A deliverable rendered as a single line, e.g. "WEB001 — Squeeze Page · 30s · 16:9 · Qty 2". */
+function deliverableLine(deliverable: Deliverable): string {
+  const label = [deliverable.identifier, deliverable.description].filter(Boolean).join(" — ");
+  const meta = [deliverable.duration, deliverable.aspectRatio, `Qty ${deliverable.qty}`].filter(Boolean).join(" · ");
+  return meta ? `${label} · ${meta}` : label;
+}
+
+/** A block's combined information: its own free-text lines, then each attached deliverable as its own line. */
+function infoLines(block: ScheduleBlock, deliverablesById: Map<string, Deliverable>): string[] {
+  const attached = block.deliverableIds
+    .map((id) => deliverablesById.get(id))
+    .filter((d): d is Deliverable => Boolean(d))
+    .map(deliverableLine);
+  return [...block.information, ...attached];
+}
+
 interface Segment {
   block: ScheduleBlock;
+  lines: string[];
   colStart: number;
   colSpan: number;
   continuesBefore: boolean;
@@ -55,7 +74,7 @@ interface Segment {
 }
 
 /** Clips a lane's blocks to this row and converts them into column-indexed segments. */
-function buildSegments(blocks: ScheduleBlock[], days: string[]): Segment[] {
+function buildSegments(blocks: ScheduleBlock[], days: string[], deliverablesById: Map<string, Deliverable>): Segment[] {
   const segments: Segment[] = [];
   for (const block of blocks) {
     const clipped = clipRangeToRow(block.startDate, block.endDate, days[0], days[days.length - 1]);
@@ -64,6 +83,7 @@ function buildSegments(blocks: ScheduleBlock[], days: string[]): Segment[] {
     const colEnd = days.indexOf(clipped.end);
     segments.push({
       block,
+      lines: infoLines(block, deliverablesById),
       colStart,
       colSpan: colEnd - colStart + 1,
       continuesBefore: clipped.continuesBefore,
@@ -88,10 +108,9 @@ function assignSegmentRows(segments: Segment[]): number[] {
   });
 }
 
-/** How tall a segment needs to be to fit its title line plus one line per note, un-truncated. */
+/** How tall a segment needs to be to fit its title line plus one line per info line, un-truncated. */
 function segmentHeight(segment: Segment): number {
-  const notesCount = segment.block.notes.length;
-  return BLOCK_BASE_HEIGHT + notesCount * (NOTE_LINE_HEIGHT + CONTENT_GAP);
+  return BLOCK_BASE_HEIGHT + segment.lines.length * (NOTE_LINE_HEIGHT + CONTENT_GAP);
 }
 
 /** Assigns each segment a top offset + height: segments sharing a stacked row share that row's tallest height. */
@@ -123,7 +142,7 @@ function blockBadgeText(block: ScheduleBlock): string | undefined {
   return parts.length > 0 ? parts.join("  ") : undefined;
 }
 
-function BlockHoverCardContent({ block }: { block: ScheduleBlock }) {
+function BlockHoverCardContent({ block, lines }: { block: ScheduleBlock; lines: string[] }) {
   return (
     <div className="flex flex-col gap-1.5">
       <p className="font-semibold leading-tight">{block.title || "(untitled)"}</p>
@@ -134,11 +153,10 @@ function BlockHoverCardContent({ block }: { block: ScheduleBlock }) {
       {(block.timeRange || block.mode) && (
         <p className="text-xs text-muted-foreground">{[block.timeRange, block.mode].filter(Boolean).join("  ")}</p>
       )}
-      {block.subHeading && <p className="text-xs">{block.subHeading}</p>}
-      {block.notes.length > 0 && (
+      {lines.length > 0 && (
         <ul className="flex flex-col gap-0.5 text-xs">
-          {block.notes.map((note, i) => (
-            <li key={i}>- {note}</li>
+          {lines.map((line, i) => (
+            <li key={i}>- {line}</li>
           ))}
         </ul>
       )}
@@ -201,15 +219,15 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
                     </a>
                   )}
                 </div>
-                {block.notes.map((note, i) => (
+                {segment.lines.map((line, i) => (
                   <span key={i} className="truncate text-[10px] leading-tight opacity-90">
-                    {note}
+                    {line}
                   </span>
                 ))}
               </div>
             </HoverCardTrigger>
             <HoverCardContent>
-              <BlockHoverCardContent block={block} />
+              <BlockHoverCardContent block={block} lines={segment.lines} />
             </HoverCardContent>
           </HoverCard>
         );
@@ -225,6 +243,7 @@ interface MonthWeekRowProps {
   phaseTitles: PhaseTitle[];
   rjfBlocks: ScheduleBlock[];
   clientBlocks: ScheduleBlock[];
+  deliverables: Deliverable[];
 }
 
 /** The phase (if any) covering a given day, used to render the coloured date pill. */
@@ -239,10 +258,12 @@ export function MonthWeekRow({
   phaseTitles,
   rjfBlocks,
   clientBlocks,
+  deliverables,
 }: MonthWeekRowProps) {
   const phaseTitlesById = new Map(phaseTitles.map((t) => [t.id, t]));
-  const rjfSegments = buildSegments(rjfBlocks, days);
-  const clientSegments = buildSegments(clientBlocks, days);
+  const deliverablesById = new Map(deliverables.map((d) => [d.id, d]));
+  const rjfSegments = buildSegments(rjfBlocks, days, deliverablesById);
+  const clientSegments = buildSegments(clientBlocks, days, deliverablesById);
 
   const rjfLayout = layoutSegments(rjfSegments);
   const clientLayout = layoutSegments(clientSegments);

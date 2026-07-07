@@ -54,17 +54,20 @@ async function reconstructProject(projectId: string): Promise<Project | undefine
       identifier: d.identifier,
       description: d.description,
       qty: d.qty,
+      duration: d.duration ?? "",
+      aspectRatio: d.aspect_ratio ?? "",
+      completed: d.completed ?? false,
     })),
     blocks: (blocks || []).map((b: any) => ({
       id: b.id,
       lane: b.lane,
       title: b.title,
-      subHeading: b.sub_heading,
       startDate: b.start_date,
       endDate: b.end_date,
       timeRange: b.time_range,
       mode: b.mode,
-      notes: b.notes || [],
+      information: b.information || [],
+      deliverableIds: b.deliverable_ids || [],
       color: b.color,
       personId: b.person_id,
       externalLink: b.external_link,
@@ -140,6 +143,9 @@ export async function createProject(input: NewProjectInput): Promise<Project> {
       identifier: d.identifier,
       description: d.description,
       qty: d.qty,
+      duration: d.duration,
+      aspect_ratio: d.aspectRatio,
+      completed: d.completed,
     }));
     await supabase.from("deliverables").insert(deliverablesToInsert);
   }
@@ -200,6 +206,9 @@ export async function addDeliverable(
     identifier: deliverable.identifier,
     description: deliverable.description,
     qty: deliverable.qty,
+    duration: deliverable.duration,
+    aspect_ratio: deliverable.aspectRatio,
+    completed: deliverable.completed,
   });
 
   if (error) throw error;
@@ -216,6 +225,9 @@ export async function updateDeliverable(
       identifier: deliverable.identifier,
       description: deliverable.description,
       qty: deliverable.qty,
+      duration: deliverable.duration,
+      aspect_ratio: deliverable.aspectRatio,
+      completed: deliverable.completed,
     })
     .eq("id", deliverable.id);
 
@@ -243,12 +255,12 @@ export async function addBlock(
     project_id: projectId,
     lane: block.lane,
     title: block.title,
-    sub_heading: block.subHeading,
     start_date: block.startDate,
     end_date: block.endDate,
     time_range: block.timeRange,
     mode: block.mode,
-    notes: block.notes,
+    information: block.information,
+    deliverable_ids: block.deliverableIds,
     color: block.color,
     person_id: block.personId,
     external_link: block.externalLink,
@@ -265,12 +277,12 @@ export async function updateBlock(_projectId: string, block: ScheduleBlock): Pro
     .update({
       lane: block.lane,
       title: block.title,
-      sub_heading: block.subHeading,
       start_date: block.startDate,
       end_date: block.endDate,
       time_range: block.timeRange,
       mode: block.mode,
-      notes: block.notes,
+      information: block.information,
+      deliverable_ids: block.deliverableIds,
       color: block.color,
       person_id: block.personId,
       external_link: block.externalLink,

@@ -2,13 +2,14 @@
  * BlockEditDialog.tsx
  * ---------------------------------------------------------------------------
  * shadcn Dialog form for creating or editing a single ScheduleBlock's
- * metadata (title, sub-heading, dates, time, mode, notes, colour, lane,
- * linked person). Does NOT handle drag/resize - this is purely the
- * create/edit-by-typing path. Saving calls straight into projectRepository
- * and then tells the parent grid to re-read the project from storage.
+ * metadata (title, dates, time, mode, information, colour, lane, linked
+ * person). Does NOT handle drag/resize - this is purely the create/edit-by-
+ * typing path. Saving calls straight into projectRepository and then tells
+ * the parent grid to re-read the project from storage.
  */
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -31,7 +35,15 @@ import {
 import { addBlock, removeBlock, updateBlock } from "@/lib/storage/projectRepository";
 import { getPeople } from "@/lib/storage/peopleRepository";
 import { getLaneTitleOptions } from "@/lib/storage/laneTitleOptionRepository";
-import { LANE_LABELS, LANE_ORDER, type Lane, type LaneTitleOption, type Mode, type ScheduleBlock } from "@/lib/storage/types";
+import {
+  LANE_LABELS,
+  LANE_ORDER,
+  type Deliverable,
+  type Lane,
+  type LaneTitleOption,
+  type Mode,
+  type ScheduleBlock,
+} from "@/lib/storage/types";
 import { clampRangeToBounds } from "@/lib/dateUtils";
 import { COLOR_PRESETS, GREY_SHADES } from "./colorPresets";
 import { cn } from "@/lib/utils";
@@ -41,6 +53,8 @@ interface BlockEditDialogProps {
   /** The block being edited, or a partial "seed" (lane + default dates) when creating a new one. */
   block: ScheduleBlock | { lane: Lane; startDate: string; endDate: string };
   bounds: { startDate: string; endDate: string };
+  /** The project's own deliverables, offered as attachable items in the Information section. */
+  deliverables: Deliverable[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -49,7 +63,7 @@ function isExistingBlock(b: BlockEditDialogProps["block"]): b is ScheduleBlock {
   return "id" in b;
 }
 
-export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: BlockEditDialogProps) {
+export function BlockEditDialog({ projectId, block, bounds, deliverables, onClose, onSaved }: BlockEditDialogProps) {
   const existing = isExistingBlock(block) ? block : null;
   const [people, setPeople] = useState<any[]>([]);
   const [laneTitleOptions, setLaneTitleOptions] = useState<LaneTitleOption[]>([]);
@@ -64,13 +78,13 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
 
   const [lane, setLane] = useState<Lane>(block.lane);
   const [title, setTitle] = useState(existing?.title ?? "");
-  const [subHeading, setSubHeading] = useState(existing?.subHeading ?? "");
   const [startDate, setStartDate] = useState(block.startDate);
   const [endDate, setEndDate] = useState(block.endDate);
   const [timeStart, setTimeStart] = useState(existingTimeStart ?? "");
   const [timeEnd, setTimeEnd] = useState(existingTimeEnd ?? "");
   const [mode, setMode] = useState<Mode>(existing?.mode ?? null);
-  const [notesText, setNotesText] = useState((existing?.notes ?? []).join("\n"));
+  const [informationText, setInformationText] = useState((existing?.information ?? []).join("\n"));
+  const [deliverableIds, setDeliverableIds] = useState<string[]>(existing?.deliverableIds ?? []);
   const [color, setColor] = useState(existing?.color ?? COLOR_PRESETS[6].value);
   const [personId, setPersonId] = useState<string | null>(existing?.personId ?? null);
   const [externalLink, setExternalLink] = useState(existing?.externalLink ?? "");
@@ -98,7 +112,7 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
       bounds.startDate,
       bounds.endDate,
     );
-    const notes = notesText
+    const information = informationText
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
@@ -112,10 +126,10 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
     const payload = {
       lane,
       title: resolvedTitle,
-      subHeading,
       timeRange,
       mode,
-      notes,
+      information,
+      deliverableIds,
       color,
       personId,
       externalLink: showExternalLink ? externalLink.trim() || null : null,
@@ -218,17 +232,6 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
             </div>
           )}
 
-          {!isLeaveTracker && (
-            <div className="flex flex-col gap-2">
-              <Label>Sub-heading</Label>
-              <Input
-                value={subHeading}
-                onChange={(e) => setSubHeading(e.target.value)}
-                placeholder="e.g. Squeeze Page Design V1"
-              />
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
               <Label>Start date</Label>
@@ -264,13 +267,40 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>Notes (one per line)</Label>
+            <div className="flex items-center justify-between">
+              <Label>Information (one per line)</Label>
+              <DeliverablePicker
+                deliverables={deliverables}
+                selectedIds={deliverableIds}
+                onChange={setDeliverableIds}
+              />
+            </div>
             <Textarea
-              value={notesText}
-              onChange={(e) => setNotesText(e.target.value)}
+              value={informationText}
+              onChange={(e) => setInformationText(e.target.value)}
               rows={3}
               placeholder={"Squeeze Page Design in Progress\nSqueeze Page Designs V1"}
             />
+            {deliverableIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {deliverableIds.map((id) => {
+                  const deliverable = deliverables.find((d) => d.id === id);
+                  if (!deliverable) return null;
+                  return (
+                    <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                      {deliverable.identifier || deliverable.description || "Untitled deliverable"}
+                      <button
+                        type="button"
+                        onClick={() => setDeliverableIds((prev) => prev.filter((existingId) => existingId !== id))}
+                        className="rounded-full hover:bg-foreground/10"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -348,5 +378,52 @@ export function BlockEditDialog({ projectId, block, bounds, onClose, onSaved }: 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Small "+" button that opens a checkbox list of the project's deliverables to attach to this block's Information section. */
+function DeliverablePicker({
+  deliverables,
+  selectedIds,
+  onChange,
+}: {
+  deliverables: Deliverable[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  function toggle(id: string, checked: boolean) {
+    onChange(checked ? [...selectedIds, id] : selectedIds.filter((existingId) => existingId !== id));
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button type="button" size="icon" variant="outline" className="size-6" disabled={deliverables.length === 0}>
+          <span className="text-sm leading-none">+</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Attach deliverables</p>
+        {deliverables.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No deliverables on this project yet.</p>
+        ) : (
+          <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+            {deliverables.map((deliverable) => (
+              <label key={deliverable.id} className="flex items-start gap-2 text-sm">
+                <Checkbox
+                  checked={selectedIds.includes(deliverable.id)}
+                  onCheckedChange={(checked) => toggle(deliverable.id, checked === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-medium">{deliverable.identifier || "(untitled)"}</span>
+                  {deliverable.description && <span className="text-muted-foreground"> — {deliverable.description}</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

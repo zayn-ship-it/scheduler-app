@@ -22,8 +22,10 @@ import { getProjectById } from "@/lib/storage/projectRepository";
 import type { Project } from "@/lib/storage/types";
 import { ProjectHeader } from "@/features/schedule/ProjectHeader";
 import { TermsAndConditions } from "@/features/schedule/TermsAndConditions";
+import { DeliverablesProgress } from "@/features/schedule/DeliverablesProgress";
 import { PublicMonthCalendar } from "./PublicMonthCalendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export function PublicScheduleView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -58,19 +60,26 @@ export function PublicScheduleView() {
       {project.deliverables.length > 0 && (
         <div className="rounded-md border p-4">
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Deliverables</h2>
+          <div className="mb-4">
+            <DeliverablesProgress deliverables={project.deliverables} />
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Identifier</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Aspect Ratio</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {project.deliverables.map((d) => (
-                <TableRow key={d.id}>
+                <TableRow key={d.id} className={cn(d.completed && "text-muted-foreground line-through")}>
                   <TableCell>{d.identifier}</TableCell>
                   <TableCell>{d.description}</TableCell>
+                  <TableCell>{d.duration}</TableCell>
+                  <TableCell>{d.aspectRatio}</TableCell>
                   <TableCell className="text-right">{d.qty}</TableCell>
                 </TableRow>
               ))}

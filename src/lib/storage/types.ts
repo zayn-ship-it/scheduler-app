@@ -37,6 +37,12 @@ export interface Deliverable {
   identifier: string;
   description: string;
   qty: number;
+  /** Optional freeform duration, e.g. "30s". */
+  duration: string;
+  /** Optional freeform aspect ratio, e.g. "16:9". */
+  aspectRatio: string;
+  /** Whether this deliverable has been completed - drives the progress bar shown in the back office and on the live link. */
+  completed: boolean;
 }
 
 /** A team member who can be linked to schedule blocks (mainly for the Leave Tracker lane). */
@@ -70,8 +76,6 @@ export interface ScheduleBlock {
   id: string;
   lane: Lane;
   title: string;
-  /** Optional smaller text shown under the title, e.g. "Client Review". */
-  subHeading: string;
   /** ISO date string "YYYY-MM-DD", inclusive start of the block's span. */
   startDate: string;
   /** ISO date string "YYYY-MM-DD", inclusive end of the block's span. */
@@ -79,8 +83,10 @@ export interface ScheduleBlock {
   /** Free text time range, e.g. "16:00-17:00". Kept as free text to match how the agency currently writes it. */
   timeRange: string;
   mode: Mode;
-  /** One or more bullet lines, rendered with a "- " prefix (matches the original spreadsheet style). */
-  notes: string[];
+  /** One or more free-text lines, rendered with a "- " prefix (matches the original spreadsheet style). */
+  information: string[];
+  /** Deliverables (by id, from the project's own Deliverable[]) attached to this block - shown alongside `information` on the live link, with their metadata. */
+  deliverableIds: string[];
   /** Hex color or a named preset, used for the block's background. */
   color: string;
   /** Optional link to a Person - mainly used for Leave Tracker entries. */
