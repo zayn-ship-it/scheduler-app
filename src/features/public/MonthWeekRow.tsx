@@ -18,16 +18,17 @@
  * results loses its rounded corner on whichever side it was clipped, as a
  * visual cue that it continues into the neighbouring row.
  *
- * Each RJF/Client block renders as: title centred in the middle of the
- * block, with its time/mode "badge" and external link at the left/right
- * edges, then (if the "Show deliverables" toggle is on) just its first
- * information/deliverable line - if there's more than one, a "See more"
- * button reveals the rest. Clicking a block (or "See more") opens a
- * right-side detail drawer with the full information; hovering shows a hand
- * icon hinting that it's clickable.
+ * Each RJF/Client block renders as: a left-aligned title with its time/mode
+ * "badge" and external link following it (wrapping onto its own line below
+ * the title if there isn't room), then - if the "Show deliverables" toggle
+ * is on - just its first information/deliverable line, with a "See more"
+ * button if there's more than one. Clicking a block (or "See more") opens a
+ * right-side detail drawer with the FULL information (including deliverable
+ * data) regardless of the toggle - the toggle only declutters the compact
+ * calendar preview, it never hides data from the drawer.
  */
 import { useState } from "react";
-import { ExternalLink, Hand } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
@@ -97,6 +98,11 @@ function assignSegmentRows(segments: Segment[]): number[] {
   });
 }
 
+/** The lines actually shown in the compact calendar preview - full detail when the toggle is on, just the block's own free-text info when it's off (deliverables still remain in segment.lines for the drawer). */
+function compactLines(segment: Segment, showDeliverables: boolean): string[] {
+  return showDeliverables ? segment.lines : segment.block.information;
+}
+
 /** How many lines actually render inline on the compact block: the first line, plus one more for "See more" if there's anything hidden behind it. */
 function visibleLineCount(lines: string[]): number {
   if (lines.length === 0) return 0;
@@ -104,17 +110,17 @@ function visibleLineCount(lines: string[]): number {
 }
 
 /** How tall a segment needs to be to fit its title line plus its visible info lines, un-truncated. */
-function segmentHeight(segment: Segment): number {
-  return Math.max(MIN_BLOCK_HEIGHT, BLOCK_BASE_HEIGHT + visibleLineCount(segment.lines) * (NOTE_LINE_HEIGHT + CONTENT_GAP));
+function segmentHeight(segment: Segment, showDeliverables: boolean): number {
+  return Math.max(MIN_BLOCK_HEIGHT, BLOCK_BASE_HEIGHT + visibleLineCount(compactLines(segment, showDeliverables)) * (NOTE_LINE_HEIGHT + CONTENT_GAP));
 }
 
 /** Assigns each segment a top offset + height: segments sharing a stacked row share that row's tallest height. */
-function layoutSegments(segments: Segment[]): { tops: number[]; heights: number[]; totalHeight: number } {
+function layoutSegments(segments: Segment[], showDeliverables: boolean): { tops: number[]; heights: number[]; totalHeight: number } {
   const rows = assignSegmentRows(segments);
   const rowHeights: number[] = [];
   segments.forEach((segment, index) => {
     const row = rows[index];
-    rowHeights[row] = Math.max(rowHeights[row] ?? 0, segmentHeight(segment));
+    rowHeights[row] = Math.max(rowHeights[row] ?? 0, segmentHeight(segment, showDeliverables));
   });
 
   const rowTops: number[] = [];
@@ -169,8 +175,18 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
   );
 }
 
-function TrackLayer({ segments, trackTop, dayCount }: { segments: Segment[]; trackTop: number; dayCount: number }) {
-  const { tops, heights, totalHeight } = layoutSegments(segments);
+function TrackLayer({
+  segments,
+  trackTop,
+  dayCount,
+  showDeliverables,
+}: {
+  segments: Segment[];
+  trackTop: number;
+  dayCount: number;
+  showDeliverables: boolean;
+}) {
+  const { tops, heights, totalHeight } = layoutSegments(segments, showDeliverables);
   const [openBlockId, setOpenBlockId] = useState<string | null>(null);
   const openSegment = segments.find((s) => s.block.id === openBlockId);
 
@@ -178,6 +194,7 @@ function TrackLayer({ segments, trackTop, dayCount }: { segments: Segment[]; tra
     <div className="absolute inset-x-0" style={{ top: trackTop, height: totalHeight }}>
       {segments.map((segment, index) => {
         const { block } = segment;
+        const lines = compactLines(segment, showDeliverables);
         // RJF never offers a colour choice - always render the brand black regardless of what's stored (covers older blocks saved before this was locked down).
         const displayColor = block.lane === "RJF" ? RJF_BLOCK_COLOR : block.color;
         const textColor = getContrastTextColor(displayColor);
@@ -189,7 +206,7 @@ function TrackLayer({ segments, trackTop, dayCount }: { segments: Segment[]; tra
           <div
             key={block.id}
             className={cn(
-              "group pointer-events-auto absolute flex cursor-pointer flex-col gap-1 overflow-hidden px-2 py-1",
+              "pointer-events-auto absolute flex cursor-pointer flex-col gap-1 overflow-hidden px-2 py-1",
               !segment.continuesBefore && "rounded-l-md",
               !segment.continuesAfter && "rounded-r-md",
             )}
@@ -203,49 +220,40 @@ function TrackLayer({ segments, trackTop, dayCount }: { segments: Segment[]; tra
             }}
             onClick={() => setOpenBlockId(block.id)}
           >
-            <Hand
-              className={cn(
-                "pointer-events-none absolute top-1 right-1 size-3 opacity-0 transition-opacity group-hover:opacity-70",
-              )}
-            />
-            <div className="grid grid-cols-[minmax(0,auto)_1fr_minmax(0,auto)] items-center gap-1">
-              <span>
-                {blockBadgeText(block) && (
-                  <span
-                    className={cn(
-                      "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
-                      isDarkText ? "border-foreground/40" : "border-white/70",
-                    )}
-                  >
-                    {blockBadgeText(block)}
-                  </span>
-                )}
-              </span>
-              <span className="truncate text-center text-[14px] font-medium leading-tight">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <span className="truncate text-left text-[14px] font-medium leading-tight">
                 {block.title || "(untitled)"}
               </span>
-              <span>
-                {block.externalLink && (
-                  <a
-                    href={block.externalLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
-                    onClick={(e) => e.stopPropagation()}
-                    title={linkText(block)}
-                  >
-                    <ExternalLink className="size-3" />
-                  </a>
-                )}
-              </span>
+              {blockBadgeText(block) && (
+                <span
+                  className={cn(
+                    "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
+                    isDarkText ? "border-foreground/40" : "border-white/70",
+                  )}
+                >
+                  {blockBadgeText(block)}
+                </span>
+              )}
+              {block.externalLink && (
+                <a
+                  href={block.externalLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
+                  onClick={(e) => e.stopPropagation()}
+                  title={linkText(block)}
+                >
+                  <ExternalLink className="size-3" />
+                </a>
+              )}
             </div>
-            {segment.lines.length > 0 && (
-              <span className="truncate text-[12px] leading-tight opacity-90">{segment.lines[0]}</span>
+            {lines.length > 0 && (
+              <span className="truncate text-[12px] leading-tight opacity-90">{lines[0]}</span>
             )}
-            {segment.lines.length > 1 && (
+            {lines.length > 1 && (
               <button
                 type="button"
-                className="w-fit text-left text-[12px] font-medium leading-tight opacity-90 hover:opacity-100"
+                className="w-fit truncate text-left text-[12px] leading-tight opacity-90 hover:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
                   setOpenBlockId(block.id);
@@ -297,12 +305,13 @@ export function MonthWeekRow({
   showDeliverables,
 }: MonthWeekRowProps) {
   const phaseTitlesById = new Map(phaseTitles.map((t) => [t.id, t]));
-  const deliverablesById = new Map(showDeliverables ? deliverables.map((d) => [d.id, d]) : []);
+  // Always the full map - the "Show deliverables" toggle only affects the compact preview (see compactLines), never the drawer's data.
+  const deliverablesById = new Map(deliverables.map((d) => [d.id, d]));
   const rjfSegments = buildSegments(rjfBlocks, days, deliverablesById);
   const clientSegments = buildSegments(clientBlocks, days, deliverablesById);
 
-  const rjfLayout = layoutSegments(rjfSegments);
-  const clientLayout = layoutSegments(clientSegments);
+  const rjfLayout = layoutSegments(rjfSegments, showDeliverables);
+  const clientLayout = layoutSegments(clientSegments, showDeliverables);
 
   const rjfTop = DAY_NUMBER_HEIGHT + 2;
   const clientTop = rjfTop + rjfLayout.totalHeight + TRACK_GAP;
@@ -350,8 +359,8 @@ export function MonthWeekRow({
       })}
 
       <div className="pointer-events-none absolute inset-x-0 top-0">
-        <TrackLayer segments={rjfSegments} trackTop={rjfTop} dayCount={days.length} />
-        <TrackLayer segments={clientSegments} trackTop={clientTop} dayCount={days.length} />
+        <TrackLayer segments={rjfSegments} trackTop={rjfTop} dayCount={days.length} showDeliverables={showDeliverables} />
+        <TrackLayer segments={clientSegments} trackTop={clientTop} dayCount={days.length} showDeliverables={showDeliverables} />
       </div>
     </div>
   );
