@@ -142,8 +142,12 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
   async function handleSaveVersion() {
     if (!project) return;
     try {
-      await saveProjectVersion(project.id, project.scheduleVersion || "Untitled version");
-      setVersionsRefreshKey((k) => k + 1);
+      const currentVersion = project.scheduleVersion || "1";
+      await saveProjectVersion(project.id, currentVersion);
+      const nextVersion = incrementVersion(currentVersion);
+      await patchProject(project.id, { scheduleVersion: nextVersion });
+      await refreshFromStorage();
+      setFields((prev) => ({ ...prev, scheduleVersion: nextVersion }));
       toast.success("Version saved");
     } catch (error) {
       console.error("Failed to save version:", error);
@@ -250,7 +254,7 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
               onChange={(v) => updateField("projectManager", v)}
             />
             <PersonSelectField label="Producer" value={fields.producer} onChange={(v) => updateField("producer", v)} />
-            <Field label="Schedule Version" value={fields.scheduleVersion} onChange={(v) => updateField("scheduleVersion", v)} />
+            <Field label="Schedule Version" value={fields.scheduleVersion} onChange={() => {}} disabled />
             <Field label="Date" type="date" value={fields.date} onChange={(v) => updateField("date", v)} />
           </div>
 
@@ -349,8 +353,9 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
           <DialogHeader>
             <DialogTitle>Save this as a new version?</DialogTitle>
             <DialogDescription>
-              This saves a named snapshot of the current schedule for your records - it doesn't affect what's live.
-              The public schedule link always shows the current schedule regardless of saved versions.
+              This saves a named snapshot of the current schedule for your records and bumps the Schedule Version
+              number up by one. It doesn't affect what's live - the public schedule link always shows the current
+              schedule regardless of saved versions.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:justify-end">
@@ -463,18 +468,26 @@ function Field({
   value,
   onChange,
   type = "text",
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2">
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} />
     </div>
   );
+}
+
+/** Bumps a whole-number version string by 1 (e.g. "1" -> "2"). Falls back to "2" for any legacy/non-numeric value (e.g. an old "1.0" or a hand-typed label), since the next version after "unknown" is still just "the next one". */
+function incrementVersion(version: string): string {
+  const n = parseInt(version, 10);
+  return Number.isFinite(n) ? String(n + 1) : "2";
 }
 
 const UNASSIGNED = "__unassigned__";
