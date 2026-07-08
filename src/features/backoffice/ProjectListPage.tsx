@@ -107,9 +107,7 @@ export function ProjectListPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" asChild>
-                    <Link to={`/backoffice/projects/${project.id}/edit`} target="_blank" rel="noopener noreferrer">
-                      Open Schedule
-                    </Link>
+                    <Link to={`/backoffice/projects/${project.id}/edit`}>Open Schedule</Link>
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => copyPublicLink(project.id)}>
                     <ExternalLink className="size-4" />

@@ -1,11 +1,11 @@
 /**
  * MonthWeekRow.tsx
  * ---------------------------------------------------------------------------
- * One week (Mon-Fri, weekends dropped entirely) of the public month
- * calendar. Renders the 5 day-number cells as a background layer (dimmed if
- * outside the current month, cross-hatched/greyed if a public holiday falls
- * on that day), then overlays two stacked "tracks" spanning across those
- * columns: the RJF lane and the Client lane.
+ * One week (Mon-Sun) of the public month calendar. Renders the 7 day-number
+ * cells as a background layer (dimmed if outside the current month,
+ * cross-hatched/greyed if a public holiday falls on that day, lightly tinted
+ * if it's a weekend), then overlays two stacked "tracks" spanning across
+ * those columns: the RJF lane and the Client lane.
  *
  * Each day cell that falls inside a phase gets its date number + the phase's
  * title rendered together inside a small pill coloured with that phase
@@ -13,25 +13,25 @@
  * date ranges the normal way in the back office's PhaseBar.tsx - this is
  * purely how the public view *displays* the result of that.
  *
- * A block that runs longer than this week (e.g. spans a weekend, or spans
- * several weeks) is clipped to just this row's Mon-Fri window via
- * `clipRangeToRow` - the segment that results loses its rounded corner on
- * whichever side it was clipped, as a visual cue that it continues into the
- * neighbouring row.
+ * A block that runs longer than this week (spans several weeks) is clipped
+ * to just this row's Mon-Sun window via `clipRangeToRow` - the segment that
+ * results loses its rounded corner on whichever side it was clipped, as a
+ * visual cue that it continues into the neighbouring row.
  *
- * Each RJF/Client block renders as: title + a rounded time/mode "badge" on
- * the same first line, then a list of "information" lines underneath - its
- * own free-text lines plus any deliverables attached to it (with their
- * duration/aspect ratio/qty appended) - one below another. The block's row
- * height grows to fit however many lines it has rather than truncating them.
- * Hovering a block also opens a HoverCard with the full detail (title,
- * dates, time, mode, link, information).
+ * Each RJF/Client block renders as: title centred in the middle of the
+ * block, with its time/mode "badge" and external link at the left/right
+ * edges, then (if the "Show deliverables" toggle is on) just its first
+ * information/deliverable line - if there's more than one, a "See more"
+ * button reveals the rest. Clicking a block (or "See more") opens a
+ * right-side detail drawer with the full information; hovering shows a hand
+ * icon hinting that it's clickable.
  */
-import { ExternalLink } from "lucide-react";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { useState } from "react";
+import { ExternalLink, Hand } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
-import { formatDisplayDate, todayIso } from "@/lib/dateUtils";
+import { formatDisplayDate, fromIsoDate, todayIso } from "@/lib/dateUtils";
 import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
 import { infoLines } from "@/features/schedule/deliverableFormat";
@@ -97,9 +97,15 @@ function assignSegmentRows(segments: Segment[]): number[] {
   });
 }
 
-/** How tall a segment needs to be to fit its title line plus one line per info line, un-truncated. */
+/** How many lines actually render inline on the compact block: the first line, plus one more for "See more" if there's anything hidden behind it. */
+function visibleLineCount(lines: string[]): number {
+  if (lines.length === 0) return 0;
+  return lines.length > 1 ? 2 : 1;
+}
+
+/** How tall a segment needs to be to fit its title line plus its visible info lines, un-truncated. */
 function segmentHeight(segment: Segment): number {
-  return Math.max(MIN_BLOCK_HEIGHT, BLOCK_BASE_HEIGHT + segment.lines.length * (NOTE_LINE_HEIGHT + CONTENT_GAP));
+  return Math.max(MIN_BLOCK_HEIGHT, BLOCK_BASE_HEIGHT + visibleLineCount(segment.lines) * (NOTE_LINE_HEIGHT + CONTENT_GAP));
 }
 
 /** Assigns each segment a top offset + height: segments sharing a stacked row share that row's tallest height. */
@@ -131,10 +137,9 @@ function blockBadgeText(block: ScheduleBlock): string | undefined {
   return parts.length > 0 ? parts.join("  ") : undefined;
 }
 
-function BlockHoverCardContent({ block, lines }: { block: ScheduleBlock; lines: string[] }) {
+function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: string[] }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="font-semibold leading-tight">{block.title || "(untitled)"}</p>
       <p className="text-xs text-muted-foreground">
         {formatDisplayDate(block.startDate)}
         {block.endDate !== block.startDate && ` – ${formatDisplayDate(block.endDate)}`}
@@ -164,8 +169,10 @@ function BlockHoverCardContent({ block, lines }: { block: ScheduleBlock; lines: 
   );
 }
 
-function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: number }) {
+function TrackLayer({ segments, trackTop, dayCount }: { segments: Segment[]; trackTop: number; dayCount: number }) {
   const { tops, heights, totalHeight } = layoutSegments(segments);
+  const [openBlockId, setOpenBlockId] = useState<string | null>(null);
+  const openSegment = segments.find((s) => s.block.id === openBlockId);
 
   return (
     <div className="absolute inset-x-0" style={{ top: trackTop, height: totalHeight }}>
@@ -179,61 +186,86 @@ function TrackLayer({ segments, trackTop }: { segments: Segment[]; trackTop: num
         const leftInset = segment.continuesBefore ? 0 : 4;
         const rightInset = segment.continuesAfter ? 0 : 4;
         return (
-          <HoverCard key={block.id} openDelay={150}>
-            <HoverCardTrigger asChild>
-              <div
-                className={cn(
-                  "pointer-events-auto absolute flex flex-col gap-1 overflow-hidden px-2 py-1",
-                  !segment.continuesBefore && "rounded-l-md",
-                  !segment.continuesAfter && "rounded-r-md",
+          <div
+            key={block.id}
+            className={cn(
+              "group pointer-events-auto absolute flex cursor-pointer flex-col gap-1 overflow-hidden px-2 py-1",
+              !segment.continuesBefore && "rounded-l-md",
+              !segment.continuesAfter && "rounded-r-md",
+            )}
+            style={{
+              left: `calc(${(segment.colStart / dayCount) * 100}% + ${leftInset}px)`,
+              width: `calc(${(segment.colSpan / dayCount) * 100}% - ${leftInset + rightInset}px)`,
+              top: tops[index],
+              height: heights[index],
+              backgroundColor: displayColor,
+              color: textColor,
+            }}
+            onClick={() => setOpenBlockId(block.id)}
+          >
+            <Hand
+              className={cn(
+                "pointer-events-none absolute top-1 right-1 size-3 opacity-0 transition-opacity group-hover:opacity-70",
+              )}
+            />
+            <div className="grid grid-cols-[minmax(0,auto)_1fr_minmax(0,auto)] items-center gap-1">
+              <span>
+                {blockBadgeText(block) && (
+                  <span
+                    className={cn(
+                      "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
+                      isDarkText ? "border-foreground/40" : "border-white/70",
+                    )}
+                  >
+                    {blockBadgeText(block)}
+                  </span>
                 )}
-                style={{
-                  left: `calc(${(segment.colStart / 5) * 100}% + ${leftInset}px)`,
-                  width: `calc(${(segment.colSpan / 5) * 100}% - ${leftInset + rightInset}px)`,
-                  top: tops[index],
-                  height: heights[index],
-                  backgroundColor: displayColor,
-                  color: textColor,
+              </span>
+              <span className="truncate text-center text-[14px] font-medium leading-tight">
+                {block.title || "(untitled)"}
+              </span>
+              <span>
+                {block.externalLink && (
+                  <a
+                    href={block.externalLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
+                    onClick={(e) => e.stopPropagation()}
+                    title={linkText(block)}
+                  >
+                    <ExternalLink className="size-3" />
+                  </a>
+                )}
+              </span>
+            </div>
+            {segment.lines.length > 0 && (
+              <span className="truncate text-[12px] leading-tight opacity-90">{segment.lines[0]}</span>
+            )}
+            {segment.lines.length > 1 && (
+              <button
+                type="button"
+                className="w-fit text-left text-[12px] font-medium leading-tight opacity-90 hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenBlockId(block.id);
                 }}
               >
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-[14px] font-medium leading-tight">{block.title || "(untitled)"}</span>
-                  {blockBadgeText(block) && (
-                    <span
-                      className={cn(
-                        "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
-                        isDarkText ? "border-foreground/40" : "border-white/70",
-                      )}
-                    >
-                      {blockBadgeText(block)}
-                    </span>
-                  )}
-                  {block.externalLink && (
-                    <a
-                      href={block.externalLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
-                      onClick={(e) => e.stopPropagation()}
-                      title={linkText(block)}
-                    >
-                      <ExternalLink className="size-3" />
-                    </a>
-                  )}
-                </div>
-                {segment.lines.map((line, i) => (
-                  <span key={i} className="truncate text-[12px] leading-tight opacity-90">
-                    {line}
-                  </span>
-                ))}
-              </div>
-            </HoverCardTrigger>
-            <HoverCardContent>
-              <BlockHoverCardContent block={block} lines={segment.lines} />
-            </HoverCardContent>
-          </HoverCard>
+                See more
+              </button>
+            )}
+          </div>
         );
       })}
+
+      <Sheet open={openSegment !== undefined} onOpenChange={(open) => !open && setOpenBlockId(null)}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{openSegment?.block.title || "(untitled)"}</SheetTitle>
+          </SheetHeader>
+          {openSegment && <BlockDetailContent block={openSegment.block} lines={openSegment.lines} />}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -246,6 +278,7 @@ interface MonthWeekRowProps {
   rjfBlocks: ScheduleBlock[];
   clientBlocks: ScheduleBlock[];
   deliverables: Deliverable[];
+  showDeliverables: boolean;
 }
 
 /** The phase (if any) covering a given day, used to render the coloured date pill. */
@@ -261,9 +294,10 @@ export function MonthWeekRow({
   rjfBlocks,
   clientBlocks,
   deliverables,
+  showDeliverables,
 }: MonthWeekRowProps) {
   const phaseTitlesById = new Map(phaseTitles.map((t) => [t.id, t]));
-  const deliverablesById = new Map(deliverables.map((d) => [d.id, d]));
+  const deliverablesById = new Map(showDeliverables ? deliverables.map((d) => [d.id, d]) : []);
   const rjfSegments = buildSegments(rjfBlocks, days, deliverablesById);
   const clientSegments = buildSegments(clientBlocks, days, deliverablesById);
 
@@ -280,6 +314,8 @@ export function MonthWeekRow({
         const holiday = getHolidayForDate(day);
         const inMonth = isDateInMonth(day, monthAnchor);
         const isToday = day === todayIso();
+        const dayOfWeek = fromIsoDate(day).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
         const phaseEntry = phaseForDay(phaseEntries, day);
         const phaseTitle = phaseEntry ? phaseTitlesById.get(phaseEntry.phaseTitleId) : undefined;
         return (
@@ -287,6 +323,7 @@ export function MonthWeekRow({
             key={day}
             className={cn(
               "relative flex-1 border-l p-1",
+              isWeekend && "bg-muted/20",
               !inMonth && "bg-muted/40 opacity-50",
               isToday && "bg-muted/70",
               holiday && "bg-[repeating-linear-gradient(45deg,theme(colors.muted.DEFAULT),theme(colors.muted.DEFAULT)_6px,transparent_6px,transparent_12px)]",
@@ -298,6 +335,7 @@ export function MonthWeekRow({
               className="flex items-baseline gap-1 rounded px-1 py-0.5"
               style={phaseEntry ? { backgroundColor: phaseTitle?.color ?? "#94a3b8" } : undefined}
             >
+              {isToday && <span className="size-1 shrink-0 rounded-full bg-green-500" />}
               <span className={cn("shrink-0 text-xs font-medium", phaseEntry ? "text-white" : "text-muted-foreground")}>
                 {day.slice(8, 10)}
               </span>
@@ -312,8 +350,8 @@ export function MonthWeekRow({
       })}
 
       <div className="pointer-events-none absolute inset-x-0 top-0">
-        <TrackLayer segments={rjfSegments} trackTop={rjfTop} />
-        <TrackLayer segments={clientSegments} trackTop={clientTop} />
+        <TrackLayer segments={rjfSegments} trackTop={rjfTop} dayCount={days.length} />
+        <TrackLayer segments={clientSegments} trackTop={clientTop} dayCount={days.length} />
       </div>
     </div>
   );

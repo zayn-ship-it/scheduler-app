@@ -2,7 +2,7 @@
  * PublicMonthCalendar.tsx
  * ---------------------------------------------------------------------------
  * The client-facing schedule view: a traditional month calendar grid
- * (Mon-Fri only - weekends are dropped as columns entirely), showing only
+ * (Mon-Sun, weekends included as columns), showing only
  * the RJF and Client lanes plus the Phase bar. Suppliers/Internal/Leave
  * Tracker blocks are intentionally never read by this component - those
  * lanes are for internal visibility only (see the back office's
@@ -15,6 +15,8 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   addMonths,
   formatMonthLabel,
@@ -24,14 +26,15 @@ import {
 } from "@/lib/calendarUtils";
 import type { PhaseTitle, Project } from "@/lib/storage/types";
 import { getPhaseTitles } from "@/lib/storage/phaseTitleRepository";
-import { AGENCY_NAME } from "@/lib/constants";
 import { MonthWeekRow } from "./MonthWeekRow";
 
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function PublicMonthCalendar({ project }: { project: Project }) {
   const [monthAnchor, setMonthAnchor] = useState(() => getDefaultVisibleMonth(project));
   const [phaseTitles, setPhaseTitles] = useState<PhaseTitle[]>([]);
+  // Session-only - resets on every visit, never persisted.
+  const [showDeliverables, setShowDeliverables] = useState(true);
 
   useEffect(() => {
     getPhaseTitles().then(setPhaseTitles);
@@ -68,14 +71,11 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
         </Button>
       </div>
 
-      {/* Names the two streams shown below - the agency's own name is fixed, the client's name is pulled from this project. */}
-      <div className="flex items-center justify-center gap-6 border-b bg-muted/20 py-1.5 text-xs text-muted-foreground">
-        <span>
-          Agency: <span className="font-medium text-foreground">{AGENCY_NAME}</span>
-        </span>
-        <span>
-          Client: <span className="font-medium text-foreground">{project.client || "—"}</span>
-        </span>
+      <div className="flex items-center justify-center gap-2 border-b bg-muted/20 py-1.5 text-xs text-muted-foreground">
+        <Switch id="show-deliverables" checked={showDeliverables} onCheckedChange={setShowDeliverables} />
+        <Label htmlFor="show-deliverables" className="text-xs font-normal text-muted-foreground">
+          Show deliverables
+        </Label>
       </div>
 
       <div className="flex border-b bg-muted/30">
@@ -96,6 +96,7 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
           rjfBlocks={rjfBlocks}
           clientBlocks={clientBlocks}
           deliverables={project.deliverables}
+          showDeliverables={showDeliverables}
         />
       ))}
 

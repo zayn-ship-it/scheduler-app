@@ -6,9 +6,9 @@
  *
  * This is deliberately separate from dateUtils.ts, which serves the
  * back-office's continuous horizontal timeline. The calendar view has a
- * different shape entirely: weekday-only week rows (Mon-Fri, weekends
- * dropped), grouped into a traditional month grid with prev/next
- * navigation - none of which the timeline editor needs.
+ * different shape entirely: full Mon-Sun week rows grouped into a
+ * traditional month grid with prev/next navigation - none of which the
+ * timeline editor needs.
  */
 import { addDays, addMonths as addMonthsDf, endOfMonth, format, startOfMonth } from "date-fns";
 import { fromIsoDate, toIsoDate } from "@/lib/dateUtils";
@@ -35,13 +35,12 @@ export function isDateInMonth(dateIso: string, monthAnchorIso: string): boolean 
 }
 
 /**
- * Builds the weekday-only month grid for `monthAnchorIso`: an array of week
- * rows, each row exactly 5 ISO dates (Mon-Fri). Weekends are never included
- * as columns at all - a block spanning a weekend simply ends one row and
- * resumes at the start of the next (see clipRangeToRow).
+ * Builds the full month grid for `monthAnchorIso`: an array of week rows,
+ * each row exactly 7 ISO dates (Mon-Sun). A block spanning a weekend runs
+ * straight across it like any other pair of adjacent days.
  *
  * The first and last rows may include a few days from the adjacent month so
- * every row is a complete Mon-Fri week - callers should dim those using
+ * every row is a complete Mon-Sun week - callers should dim those using
  * `isDateInMonth`.
  */
 export function getMonthWeekdayGrid(monthAnchorIso: string): string[][] {
@@ -52,19 +51,19 @@ export function getMonthWeekdayGrid(monthAnchorIso: string): string[][] {
   const leadInDays = (monthStart.getDay() + 6) % 7; // days since most recent Monday
   const gridStart = addDays(monthStart, -leadInDays);
 
-  // Walk forward from the last day of the month to the Friday of that week.
-  const trailOutDays = (5 - monthEnd.getDay() + 7) % 7;
+  // Walk forward from the last day of the month to the Sunday of that week.
+  const trailOutDays = (7 - monthEnd.getDay()) % 7;
   const gridEnd = addDays(monthEnd, trailOutDays);
 
   const weeks: string[][] = [];
   let cursor = gridStart;
   while (cursor <= gridEnd) {
     const week: string[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 7; i++) {
       week.push(toIsoDate(addDays(cursor, i)));
     }
     weeks.push(week);
-    cursor = addDays(cursor, 7); // next Monday (skips the weekend entirely - no column for it)
+    cursor = addDays(cursor, 7); // next Monday
   }
   return weeks;
 }
