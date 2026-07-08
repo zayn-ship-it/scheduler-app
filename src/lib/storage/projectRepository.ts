@@ -412,16 +412,13 @@ export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT"
   const blocksToShift = project.blocks.filter(
     (b) => (b.lane === "RJF" || b.lane === "CLIENT") && b.startDate >= date,
   );
-  for (const block of blocksToShift) {
-    const shifted = shiftRange(block.startDate, block.endDate, 1);
-    await updateBlock(projectId, { ...block, ...shifted });
-  }
-
   const entriesToShift = project.phaseBarEntries.filter((p) => p.startDate >= date);
-  for (const entry of entriesToShift) {
-    const shifted = shiftRange(entry.startDate, entry.endDate, 1);
-    await updatePhaseBarEntry(projectId, { ...entry, ...shifted });
-  }
+
+  // Independent rows - shift them all in parallel instead of one round-trip at a time (this can otherwise take several seconds for a busy schedule).
+  await Promise.all([
+    ...blocksToShift.map((block) => updateBlock(projectId, { ...block, ...shiftRange(block.startDate, block.endDate, 1) })),
+    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, { ...entry, ...shiftRange(entry.startDate, entry.endDate, 1) })),
+  ]);
 
   return getProjectById(projectId);
 }

@@ -70,6 +70,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const existing = isExistingBlock(block) ? block : null;
   const [people, setPeople] = useState<any[]>([]);
   const [laneTitleOptions, setLaneTitleOptions] = useState<LaneTitleOption[]>([]);
+  const [isInsertingDelay, setIsInsertingDelay] = useState(false);
 
   useEffect(() => {
     getPeople().then(setPeople);
@@ -132,6 +133,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   async function handleSave() {
     if (canBeDelay && isDelayBlock) {
       const clampedDelay = clampRangeToBounds(startDate, startDate, bounds.startDate, bounds.endDate);
+      setIsInsertingDelay(true);
       try {
         await insertDelayBlock(projectId, lane as "RJF" | "CLIENT", clampedDelay.startDate);
         toast.success("Delay inserted - schedule shifted forward by a day, previous state saved as a version");
@@ -140,6 +142,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
       } catch (error) {
         console.error("Failed to insert delay:", error);
         toast.error("Failed to insert delay");
+        setIsInsertingDelay(false);
       }
       return;
     }
@@ -467,8 +470,11 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
           ) : (
             <span />
           )}
-          <Button onClick={handleSave} disabled={isDelayBlock ? false : isLeaveTracker ? !personId : !title.trim()}>
-            {isDelayBlock ? "Insert Delay" : "Save"}
+          <Button
+            onClick={handleSave}
+            disabled={isDelayBlock ? isInsertingDelay : isLeaveTracker ? !personId : !title.trim()}
+          >
+            {isDelayBlock ? (isInsertingDelay ? "Inserting delay…" : "Insert Delay") : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>
