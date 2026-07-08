@@ -22,7 +22,8 @@
  * dialog.
  */
 import { useRef, useState, useEffect, useMemo } from "react";
-import { updateBlock } from "@/lib/storage/projectRepository";
+import { toast } from "sonner";
+import { updateBlock, resizeDelayBlock } from "@/lib/storage/projectRepository";
 import { getPersonById } from "@/lib/storage/peopleRepository";
 import type { Deliverable, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
 import { dayIndex, spanLengthDays } from "@/lib/dateUtils";
@@ -76,6 +77,14 @@ export function ScheduleBlock({
       onCommit: async (range) => {
         justDraggedRef.current = range.startDate !== block.startDate || range.endDate !== block.endDate;
         try {
+          if (block.isDelay) {
+            if (range.endDate !== block.endDate) {
+              await resizeDelayBlock(projectId, block.id, range.endDate);
+              toast.success("Delay resized - schedule shifted");
+              onProjectChanged();
+            }
+            return;
+          }
           await updateBlock(projectId, { ...block, ...range });
           onProjectChanged();
         } catch (error) {
@@ -101,7 +110,7 @@ export function ScheduleBlock({
           "group absolute flex flex-col overflow-hidden rounded-md px-2 py-1 shadow-sm select-none",
           block.isDelay ? "items-center justify-center gap-0.5 bg-gray-500 text-white" : "justify-start",
           isNeutralLane && !block.isDelay && "border border-foreground/30 bg-transparent text-foreground",
-          !readOnly && "cursor-grab active:cursor-grabbing",
+          !readOnly && !block.isDelay && "cursor-grab active:cursor-grabbing",
           isDragging && "z-30 opacity-90 shadow-lg",
         )}
         style={{
@@ -112,7 +121,7 @@ export function ScheduleBlock({
           backgroundColor: block.isDelay ? undefined : isNeutralLane ? undefined : displayColor,
           color: block.isDelay ? undefined : textColor,
         }}
-        onPointerDown={onBodyPointerDown}
+        onPointerDown={block.isDelay ? undefined : onBodyPointerDown}
         onClick={() => {
           if (readOnly || isDragging) return;
           // Swallow the click that trails an actual drag/resize - only open the dialog for a real, un-dragged click.
@@ -124,7 +133,7 @@ export function ScheduleBlock({
         }}
         title={block.isDelay ? "Delay" : block.title}
       >
-        {!readOnly && (
+        {!readOnly && !block.isDelay && (
           <div
             className="absolute left-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onLeftHandlePointerDown}

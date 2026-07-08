@@ -24,6 +24,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -70,7 +78,7 @@ function emptyHeaderFields(): HeaderFields {
     projectCode: "",
     client: "",
     date: todayIso(),
-    scheduleVersion: "1.0",
+    scheduleVersion: "1",
     projectName: "",
     brand: "",
     projectManager: "",
@@ -91,6 +99,7 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
   const [selectedVersionId, setSelectedVersionId] = useState(CURRENT_VERSION_VALUE);
   const [selectedVersion, setSelectedVersion] = useState<ProjectVersion | null>(null);
   const [versionsRefreshKey, setVersionsRefreshKey] = useState(0);
+  const [confirmingSaveVersion, setConfirmingSaveVersion] = useState(false);
 
   useEffect(() => {
     if (mode === "edit" && projectId) {
@@ -139,6 +148,8 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
     } catch (error) {
       console.error("Failed to save version:", error);
       toast.error("Failed to save version");
+    } finally {
+      setConfirmingSaveVersion(false);
     }
   }
 
@@ -309,7 +320,7 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
                     setSelectedVersion(version);
                   }}
                 />
-                <Button variant="outline" size="sm" onClick={handleSaveVersion}>
+                <Button variant="outline" size="sm" onClick={() => setConfirmingSaveVersion(true)}>
                   Save version
                 </Button>
               </div>
@@ -332,6 +343,24 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={confirmingSaveVersion} onOpenChange={setConfirmingSaveVersion}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save this as a new version?</DialogTitle>
+            <DialogDescription>
+              This saves a named snapshot of the current schedule for your records - it doesn't affect what's live.
+              The public schedule link always shows the current schedule regardless of saved versions.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setConfirmingSaveVersion(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveVersion}>Save version</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

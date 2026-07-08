@@ -12,28 +12,29 @@ import type {
   PhaseBarEntry,
   ProjectVersion,
 } from "./types";
-import { todayIso, shiftRange, fromIsoDate } from "@/lib/dateUtils";
+import { todayIso, shiftRange, fromIsoDate, daysBetween } from "@/lib/dateUtils";
 
 /**
- * How a block or phase bar entry responds to a delay at `date`, in either direction (deltaDays = 1 to
- * insert a delay, -1 to undo one): one that hasn't started yet by `date` pushes wholesale (both start
- * and end move); one already under way at `date` (started before, still running on/after it) just runs
- * one day longer/shorter - only its end date moves. One that finished before `date` is untouched.
- * Applying this with the same `date` in both directions is symmetric: a pushed item's startDate stays
- * >= date, and an expanded item's startDate stays < date with endDate >= date, so the same branch is
- * taken on the way back out. Shared by both schedule blocks and phase bar entries, since both are just
- * a startDate/endDate range as far as this logic cares.
+ * How a block or phase bar entry responds to a delay at `date`, given a signed `deltaDays` (how many
+ * business days the delay moved by - positive to insert/extend a delay, negative to undo/shrink one):
+ * one that hasn't started yet by `date` pushes wholesale (both start and end move); one already under
+ * way at `date` (started before, still running on/after it) just runs longer/shorter - only its end
+ * date moves. One that finished before `date` is untouched. Applying this with the same `date` in both
+ * directions is symmetric: a pushed item's startDate stays >= date, and an expanded item's startDate
+ * stays < date with endDate >= date, so the same branch is taken on the way back out. Shared by both
+ * schedule blocks and phase bar entries, since both are just a startDate/endDate range as far as this
+ * logic cares.
  */
-function applyDelayShift<T extends { startDate: string; endDate: string }>(item: T, date: string, deltaDays: 1 | -1): T {
+function applyDelayShift<T extends { startDate: string; endDate: string }>(item: T, date: string, deltaDays: number): T {
   if (item.startDate >= date) {
     return {
       ...item,
-      startDate: shiftOneBusinessDay(item.startDate, deltaDays),
-      endDate: shiftOneBusinessDay(item.endDate, deltaDays),
+      startDate: shiftBusinessDays(item.startDate, deltaDays),
+      endDate: shiftBusinessDays(item.endDate, deltaDays),
     };
   }
   if (item.endDate >= date) {
-    return { ...item, endDate: shiftOneBusinessDay(item.endDate, deltaDays) };
+    return { ...item, endDate: shiftBusinessDays(item.endDate, deltaDays) };
   }
   return item;
 }
@@ -46,6 +47,16 @@ function shiftOneBusinessDay(dateIso: string, direction: 1 | -1): string {
   else if (direction === 1 && dow === 0) result = shiftRange(result, result, 1).startDate;
   else if (direction === -1 && dow === 0) result = shiftRange(result, result, -2).startDate;
   else if (direction === -1 && dow === 6) result = shiftRange(result, result, -1).startDate;
+  return result;
+}
+
+/** Applies `shiftOneBusinessDay` `deltaDays` times (in whichever direction `deltaDays` points) - so a multi-day delay resize still skips weekends one day at a time, same rules as a single-day delay. */
+function shiftBusinessDays(dateIso: string, deltaDays: number): string {
+  const direction = deltaDays >= 0 ? 1 : -1;
+  let result = dateIso;
+  for (let i = 0; i < Math.abs(deltaDays); i++) {
+    result = shiftOneBusinessDay(result, direction);
+  }
   return result;
 }
 
@@ -485,6 +496,39 @@ export async function removeDelayBlock(projectId: string, blockId: string): Prom
   ]);
 
   await removeBlock(projectId, blockId);
+
+  return getProjectById(projectId);
+}
+
+/**
+ * Called when the admin drags a delay marker's right edge to change its span - the marker's startDate
+ * (the fixed reference point) never moves, only its endDate, so this only ever needs the incremental
+ * difference between the old and new span: `applyDelayShift` is applied to every affected block/phase
+ * with `deltaDays` equal to that difference (positive when extending the delay, negative when
+ * shrinking it), same rules and same set of affected items as `insertDelayBlock`/`removeDelayBlock`.
+ * No new version snapshot is taken (this adjusts an already-in-flight delay, not a fresh one).
+ */
+export async function resizeDelayBlock(projectId: string, blockId: string, newEndDate: string): Promise<Project | undefined> {
+  const project = await getProjectById(projectId);
+  if (!project) return undefined;
+
+  const delayBlock = project.blocks.find((b) => b.id === blockId && b.isDelay);
+  if (!delayBlock) return project;
+
+  const deltaDays = daysBetween(delayBlock.endDate, newEndDate);
+  if (deltaDays === 0) return project;
+
+  const date = delayBlock.startDate;
+  const blocksToShift = project.blocks.filter(
+    (b) => b.id !== blockId && (b.lane === "RJF" || b.lane === "CLIENT") && b.endDate >= date,
+  );
+  const entriesToShift = project.phaseBarEntries.filter((p) => p.endDate >= date);
+
+  await Promise.all([
+    ...blocksToShift.map((block) => updateBlock(projectId, applyDelayShift(block, date, deltaDays))),
+    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, applyDelayShift(entry, date, deltaDays))),
+    updateBlock(projectId, { ...delayBlock, endDate: newEndDate }),
+  ]);
 
   return getProjectById(projectId);
 }

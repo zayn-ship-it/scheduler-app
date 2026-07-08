@@ -59,6 +59,11 @@ export function spanLengthDays(startIso: string, endIso: string): number {
   return differenceInCalendarDays(fromIsoDate(endIso), fromIsoDate(startIso)) + 1;
 }
 
+/** Signed calendar-day difference between two ISO dates (`bIso - aIso`). */
+export function daysBetween(aIso: string, bIso: string): number {
+  return differenceInCalendarDays(fromIsoDate(bIso), fromIsoDate(aIso));
+}
+
 /** Shifts both dates of a range by `deltaDays` (negative = earlier, positive = later), preserving span length. */
 export function shiftRange(
   startIso: string,
