@@ -332,9 +332,9 @@ export function MonthWeekRow({
             key={day}
             className={cn(
               "relative flex-1 border-l p-1",
-              isWeekend && "bg-muted/20",
+              isWeekend && "bg-muted/40",
               !inMonth && "bg-muted/40 opacity-50",
-              isToday && "bg-muted/70",
+              isToday && "bg-muted",
               holiday && "bg-[repeating-linear-gradient(45deg,theme(colors.muted.DEFAULT),theme(colors.muted.DEFAULT)_6px,transparent_6px,transparent_12px)]",
             )}
             style={{ minHeight: rowContentHeight }}
@@ -345,11 +345,11 @@ export function MonthWeekRow({
               style={phaseEntry ? { backgroundColor: phaseTitle?.color ?? "#94a3b8" } : undefined}
             >
               {isToday && <span className="size-2 shrink-0 rounded-full bg-green-500" />}
-              <span className={cn("shrink-0 text-xs font-medium", phaseEntry ? "text-white" : "text-muted-foreground")}>
+              <span className={cn("shrink-0 text-xs font-medium", phaseEntry ? "text-foreground" : "text-muted-foreground")}>
                 {day.slice(8, 10)}
               </span>
               {phaseEntry && (
-                <span className="min-w-0 truncate text-[10px] font-medium text-white">
+                <span className="min-w-0 truncate text-[11px] font-medium text-foreground">
                   {phaseTitle?.label ?? "Unknown phase"}
                 </span>
               )}

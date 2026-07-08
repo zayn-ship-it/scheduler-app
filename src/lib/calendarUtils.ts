@@ -36,23 +36,23 @@ export function isDateInMonth(dateIso: string, monthAnchorIso: string): boolean 
 
 /**
  * Builds the full month grid for `monthAnchorIso`: an array of week rows,
- * each row exactly 7 ISO dates (Mon-Sun). A block spanning a weekend runs
+ * each row exactly 7 ISO dates (Sun-Sat). A block spanning a weekend runs
  * straight across it like any other pair of adjacent days.
  *
  * The first and last rows may include a few days from the adjacent month so
- * every row is a complete Mon-Sun week - callers should dim those using
+ * every row is a complete Sun-Sat week - callers should dim those using
  * `isDateInMonth`.
  */
 export function getMonthWeekdayGrid(monthAnchorIso: string): string[][] {
   const monthStart = startOfMonth(fromIsoDate(monthAnchorIso));
   const monthEnd = endOfMonth(monthStart);
 
-  // Walk backward from the 1st to the Monday of that week (getDay: 0=Sun..6=Sat).
-  const leadInDays = (monthStart.getDay() + 6) % 7; // days since most recent Monday
+  // Walk backward from the 1st to the Sunday of that week (getDay: 0=Sun..6=Sat).
+  const leadInDays = monthStart.getDay(); // days since most recent Sunday
   const gridStart = addDays(monthStart, -leadInDays);
 
-  // Walk forward from the last day of the month to the Sunday of that week.
-  const trailOutDays = (7 - monthEnd.getDay()) % 7;
+  // Walk forward from the last day of the month to the Saturday of that week.
+  const trailOutDays = 6 - monthEnd.getDay();
   const gridEnd = addDays(monthEnd, trailOutDays);
 
   const weeks: string[][] = [];
@@ -63,7 +63,7 @@ export function getMonthWeekdayGrid(monthAnchorIso: string): string[][] {
       week.push(toIsoDate(addDays(cursor, i)));
     }
     weeks.push(week);
-    cursor = addDays(cursor, 7); // next Monday
+    cursor = addDays(cursor, 7); // next Sunday
   }
   return weeks;
 }
