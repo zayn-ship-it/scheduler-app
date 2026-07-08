@@ -8,7 +8,7 @@
  *   /schedule/:projectId               -> public, read-only client-facing schedule view (no auth)
  */
 import { Navigate, Route, Routes } from "react-router-dom";
-import { AuthGate } from "@/auth/AuthGate";
+// import { AuthGate } from "@/auth/AuthGate"; // TEMPORARY: re-enable once magic-link email sending is sorted (see below).
 import { BackOfficeLayout } from "@/features/backoffice/BackOfficeLayout";
 import { ProjectListPage } from "@/features/backoffice/ProjectListPage";
 import { ProjectFormPage } from "@/features/backoffice/ProjectFormPage";
@@ -22,11 +22,9 @@ export default function App() {
 
       <Route
         path="/backoffice"
-        element={
-          <AuthGate>
-            <BackOfficeLayout />
-          </AuthGate>
-        }
+        // TEMPORARY: AuthGate switched off while magic-link email sending is rate-limited /
+        // SMTP isn't configured yet. Re-wrap with <AuthGate> once that's sorted.
+        element={<BackOfficeLayout />}
       >
         <Route index element={<Navigate to="projects" replace />} />
         <Route path="projects" element={<ProjectListPage />} />
