@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addBlock, removeBlock, updateBlock } from "@/lib/storage/projectRepository";
+import { addBlock, insertDelayBlock, removeBlock, updateBlock } from "@/lib/storage/projectRepository";
 import { getPeople } from "@/lib/storage/peopleRepository";
 import { getLaneTitleOptions } from "@/lib/storage/laneTitleOptionRepository";
 import {
@@ -99,6 +99,10 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const showDeliverablePicker = lane !== "LEAVE_TRACKER" && lane !== "INTERNAL";
   const titleOptionsForLane = laneTitleOptions.filter((o) => o.lane === lane);
 
+  // Only a brand-new RJF/Client block can be turned into a delay marker - editing an existing block never offers this.
+  const canBeDelay = !existing && (lane === "RJF" || lane === "CLIENT");
+  const [isDelayBlock, setIsDelayBlock] = useState(false);
+
   // The dropdown offers preset titles, but a custom title must always remain possible (e.g. this block's
   // title was set before the preset existed, or this occasion just isn't in the list).
   const [customTitleMode, setCustomTitleMode] = useState(false);
@@ -119,10 +123,27 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
     } else if (!color) {
       setColor(COLOR_PRESETS[6].value);
     }
+    if (lane !== "RJF" && lane !== "CLIENT") {
+      setIsDelayBlock(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lane]);
 
   async function handleSave() {
+    if (canBeDelay && isDelayBlock) {
+      const clampedDelay = clampRangeToBounds(startDate, startDate, bounds.startDate, bounds.endDate);
+      try {
+        await insertDelayBlock(projectId, lane as "RJF" | "CLIENT", clampedDelay.startDate);
+        toast.success("Delay inserted - schedule shifted forward by a day, previous state saved as a version");
+        onSaved();
+        onClose();
+      } catch (error) {
+        console.error("Failed to insert delay:", error);
+        toast.error("Failed to insert delay");
+      }
+      return;
+    }
+
     const clamped = clampRangeToBounds(
       startDate,
       endDate < startDate ? startDate : endDate,
@@ -234,7 +255,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
             )}
           </div>
 
-          {!isLeaveTracker && (
+          {!isLeaveTracker && !isDelayBlock && (
             <div className="flex flex-col gap-2">
               <Label>Title</Label>
               {titleOptionsForLane.length > 0 ? (
@@ -277,9 +298,9 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", isDelayBlock ? "grid-cols-1" : "grid-cols-2")}>
             <div className="flex flex-col gap-2">
-              <Label>Start date</Label>
+              <Label>{isDelayBlock ? "Delay date" : "Start date"}</Label>
               <Input
                 type="date"
                 value={startDate}
@@ -288,86 +309,92 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <Label>End date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                min={bounds.startDate}
-                max={bounds.endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-2">
-              <Label>Start time</Label>
-              <Input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>End time</Label>
-              <Input type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <Label>Deliverables</Label>
-              {showDeliverablePicker && (
-                <DeliverablePicker
-                  deliverables={deliverables}
-                  selectedIds={deliverableIds}
-                  onChange={setDeliverableIds}
+            {!isDelayBlock && (
+              <div className="flex flex-col gap-2">
+                <Label>End date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  min={bounds.startDate}
+                  max={bounds.endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                 />
-              )}
-            </div>
-            <Textarea
-              value={informationText}
-              onChange={(e) => setInformationText(e.target.value)}
-              rows={3}
-              placeholder={"Squeeze Page Design in Progress\nSqueeze Page Designs V1"}
-            />
-            {deliverableIds.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {deliverableIds.map((id) => {
-                  const deliverable = deliverables.find((d) => d.id === id);
-                  if (!deliverable) return null;
-                  return (
-                    <Badge key={id} variant="secondary" className="gap-1 pr-1">
-                      {deliverable.description || deliverable.identifier || "Untitled deliverable"}
-                      <button
-                        type="button"
-                        onClick={() => setDeliverableIds((prev) => prev.filter((existingId) => existingId !== id))}
-                        className="rounded-full hover:bg-foreground/10"
-                      >
-                        <Icon name="close" size={12} />
-                      </button>
-                    </Badge>
-                  );
-                })}
               </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>{isLeaveTracker ? "Person" : "Linked person (optional, mainly for Leave Tracker)"}</Label>
-            <Select value={personId ?? "none"} onValueChange={(v) => setPersonId(v === "none" ? null : v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {people.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isDelayBlock && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2">
+                  <Label>Start time</Label>
+                  <Input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>End time</Label>
+                  <Input type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} />
+                </div>
+              </div>
 
-          {showExternalLink && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <Label>Deliverables</Label>
+                  {showDeliverablePicker && (
+                    <DeliverablePicker
+                      deliverables={deliverables}
+                      selectedIds={deliverableIds}
+                      onChange={setDeliverableIds}
+                    />
+                  )}
+                </div>
+                <Textarea
+                  value={informationText}
+                  onChange={(e) => setInformationText(e.target.value)}
+                  rows={3}
+                  placeholder={"Squeeze Page Design in Progress\nSqueeze Page Designs V1"}
+                />
+                {deliverableIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {deliverableIds.map((id) => {
+                      const deliverable = deliverables.find((d) => d.id === id);
+                      if (!deliverable) return null;
+                      return (
+                        <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                          {deliverable.description || deliverable.identifier || "Untitled deliverable"}
+                          <button
+                            type="button"
+                            onClick={() => setDeliverableIds((prev) => prev.filter((existingId) => existingId !== id))}
+                            className="rounded-full hover:bg-foreground/10"
+                          >
+                            <Icon name="close" size={12} />
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label>{isLeaveTracker ? "Person" : "Linked person (optional, mainly for Leave Tracker)"}</Label>
+                <Select value={personId ?? "none"} onValueChange={(v) => setPersonId(v === "none" ? null : v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {people.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {!isDelayBlock && showExternalLink && (
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
                 <Label>Link title (optional)</Label>
@@ -389,7 +416,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
             </div>
           )}
 
-          {showColorPicker && (
+          {!isDelayBlock && showColorPicker && (
             <div className="flex flex-col gap-2">
               <Label>Colour</Label>
               <div className="flex flex-wrap gap-2">
@@ -409,6 +436,27 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
               </div>
             </div>
           )}
+
+          {canBeDelay && (
+            <div className="flex flex-col gap-2 border-t pt-4">
+              <Label>Delay?</Label>
+              <Select value={isDelayBlock ? "yes" : "no"} onValueChange={(v) => setIsDelayBlock(v === "yes")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no">No</SelectItem>
+                  <SelectItem value="yes">Yes</SelectItem>
+                </SelectContent>
+              </Select>
+              {isDelayBlock && (
+                <p className="text-xs text-muted-foreground">
+                  Saving will add a grey delay marker on this date and shift every RJF/Client block and phase on or
+                  after it forward by one day. The current schedule is saved as a version first.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
@@ -419,8 +467,8 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
           ) : (
             <span />
           )}
-          <Button onClick={handleSave} disabled={isLeaveTracker ? !personId : !title.trim()}>
-            Save
+          <Button onClick={handleSave} disabled={isDelayBlock ? false : isLeaveTracker ? !personId : !title.trim()}>
+            {isDelayBlock ? "Insert Delay" : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>
