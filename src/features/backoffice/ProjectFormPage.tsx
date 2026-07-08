@@ -19,7 +19,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   createProject,
   defaultNewProjectDateRange,
@@ -84,27 +85,30 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
   const [fields, setFields] = useState<HeaderFields>(emptyHeaderFields());
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(mode === "edit");
 
   useEffect(() => {
     if (mode === "edit" && projectId) {
-      getProjectById(projectId).then((found) => {
-        if (found) {
-          setProject(found);
-          setFields({
-            projectCode: found.projectCode,
-            client: found.client,
-            date: found.date,
-            scheduleVersion: found.scheduleVersion,
-            projectName: found.projectName,
-            brand: found.brand,
-            projectManager: found.projectManager,
-            producer: found.producer,
-            startDate: found.startDate,
-            endDate: found.endDate,
-          });
-          setDeliverables(found.deliverables);
-        }
-      });
+      getProjectById(projectId)
+        .then((found) => {
+          if (found) {
+            setProject(found);
+            setFields({
+              projectCode: found.projectCode,
+              client: found.client,
+              date: found.date,
+              scheduleVersion: found.scheduleVersion,
+              projectName: found.projectName,
+              brand: found.brand,
+              projectManager: found.projectManager,
+              producer: found.producer,
+              startDate: found.startDate,
+              endDate: found.endDate,
+            });
+            setDeliverables(found.deliverables);
+          }
+        })
+        .finally(() => setLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, projectId]);
@@ -153,6 +157,32 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
     }
   }
 
+  if (mode === "edit" && loading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-8 w-64" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (mode === "edit" && !project) {
     return <p className="text-muted-foreground">Project not found.</p>;
   }
@@ -167,7 +197,7 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
               variant="outline"
               onClick={() => window.open(`${window.location.origin}/schedule/${project.id}`, "_blank", "noopener,noreferrer")}
             >
-              <ExternalLink className="size-4" />
+              <Icon name="link_2" size={16} />
               View Live Link
             </Button>
             <ExportToSheetButton />
@@ -338,7 +368,7 @@ function NewProjectDeliverablesFields({
               </TableCell>
               <TableCell>
                 <Button size="icon" variant="ghost" onClick={() => removeRow(row.id)}>
-                  <Trash2 className="size-4" />
+                  <Icon name="delete" size={16} />
                 </Button>
               </TableCell>
             </TableRow>
@@ -346,7 +376,7 @@ function NewProjectDeliverablesFields({
         </TableBody>
       </Table>
       <Button size="sm" variant="outline" onClick={addRow} className="self-start">
-        <Plus className="size-4" />
+        <Icon name="add" size={16} />
         Add Deliverable
       </Button>
     </div>

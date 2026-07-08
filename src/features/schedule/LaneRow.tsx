@@ -18,7 +18,7 @@
  * specific date.
  */
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import type { Deliverable, Lane, ScheduleBlock as ScheduleBlockType } from "@/lib/storage/types";
 import { LANE_LABELS } from "@/lib/storage/types";
@@ -75,7 +75,7 @@ export function LaneRow({ projectId, lane, blocks, deliverables, days, bounds, r
         {LANE_LABELS[lane]}
         {!readOnly && (
           <Button size="icon" variant="ghost" className="ml-auto size-6" onClick={() => setAddSeedDate(days[0])}>
-            <Plus className="size-3.5" />
+            <Icon name="add" size={14} />
           </Button>
         )}
       </div>

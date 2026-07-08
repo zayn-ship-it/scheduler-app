@@ -7,7 +7,7 @@
  * matches the final design and the feature's presence isn't forgotten, but
  * clicking it just tells the user it's coming later.
  */
-import { FileSpreadsheet } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -21,7 +21,7 @@ export function ExportToSheetButton() {
         })
       }
     >
-      <FileSpreadsheet className="size-4" />
+      <Icon name="table_chart" size={16} />
       Export to Google Sheet
     </Button>
   );

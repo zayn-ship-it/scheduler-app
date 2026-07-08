@@ -9,7 +9,7 @@
  *   project's public/live page.
  */
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +38,7 @@ import {
   updateGlobalTermsAndConditions,
 } from "@/lib/storage/settingsRepository";
 import { LANE_LABELS, type Lane, type LaneTitleOption, type Person, type PhaseTitle } from "@/lib/storage/types";
-import { COLOR_PRESETS, EXPANDED_COLOR_PRESETS } from "@/features/schedule/colorPresets";
+import { COLOR_PRESETS, PHASE_COLOR_PRESETS } from "@/features/schedule/colorPresets";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -114,7 +114,7 @@ function PeopleSection() {
             <Input id="person-role" value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Designer" />
           </div>
           <Button onClick={handleAdd} disabled={!name.trim()}>
-            <Plus className="size-4" />
+            <Icon name="add" size={16} />
             Add
           </Button>
         </div>
@@ -130,7 +130,7 @@ function PeopleSection() {
                   {person.role && <p className="text-xs text-muted-foreground">{person.role}</p>}
                 </div>
                 <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(person)}>
-                  <Trash2 className="size-4" />
+                  <Icon name="delete" size={16} />
                 </Button>
               </div>
             ))}
@@ -215,7 +215,7 @@ function PhaseTitlesSection() {
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Colour</span>
               <div className="flex max-w-xs flex-wrap gap-2">
-                {EXPANDED_COLOR_PRESETS.map((preset) => (
+                {PHASE_COLOR_PRESETS.map((preset) => (
                   <button
                     key={preset.value}
                     type="button"
@@ -231,7 +231,7 @@ function PhaseTitlesSection() {
               </div>
             </div>
             <Button onClick={handleSave} disabled={!label.trim()}>
-              <Plus className="size-4" />
+              <Icon name="add" size={16} />
               {editingId ? "Save changes" : "Add"}
             </Button>
             {editingId && (
@@ -269,10 +269,10 @@ function PhaseTitlesSection() {
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button size="icon" variant="ghost" onClick={() => startEdit(title)}>
-                    <Pencil className="size-4" />
+                    <Icon name="edit" size={16} />
                   </Button>
                   <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(title)}>
-                    <Trash2 className="size-4" />
+                    <Icon name="delete" size={16} />
                   </Button>
                 </div>
               </div>
@@ -354,7 +354,7 @@ function BlockTitlesSection() {
             <Input id="lane-title-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Client Review" />
           </div>
           <Button onClick={handleAdd} disabled={!label.trim()}>
-            <Plus className="size-4" />
+            <Icon name="add" size={16} />
             Add
           </Button>
         </div>
@@ -370,7 +370,7 @@ function BlockTitlesSection() {
               <div key={option.id} className="flex items-center justify-between px-4 py-3">
                 <p className="text-sm font-medium">{option.label}</p>
                 <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(option)}>
-                  <Trash2 className="size-4" />
+                  <Icon name="delete" size={16} />
                 </Button>
               </div>
             ))}

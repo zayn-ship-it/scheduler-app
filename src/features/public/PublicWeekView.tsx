@@ -20,7 +20,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { ExternalLink } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX } from "@/features/schedule/gridConstants";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
@@ -64,7 +64,7 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
         <p className="text-xs text-muted-foreground">{[block.timeRange, block.mode].filter(Boolean).join("  ")}</p>
       )}
       {lines.length > 0 && (
-        <ul className="flex flex-col gap-0.5 text-xs">
+        <ul className="flex flex-col gap-1 text-base">
           {lines.map((line, i) => (
             <li key={i}>- {line}</li>
           ))}
@@ -77,7 +77,7 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
           rel="noopener noreferrer"
           className="flex items-center gap-1 text-xs text-primary underline"
         >
-          <ExternalLink className="size-3" />
+          <Icon name="link_2" size={12} />
           {block.linkLabel || "Open meeting link"}
         </a>
       )}

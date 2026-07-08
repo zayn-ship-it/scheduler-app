@@ -28,8 +28,9 @@
  * calendar preview, it never hides data from the drawer.
  */
 import { useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate, fromIsoDate, todayIso } from "@/lib/dateUtils";
@@ -154,7 +155,7 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
         <p className="text-xs text-muted-foreground">{[block.timeRange, block.mode].filter(Boolean).join("  ")}</p>
       )}
       {lines.length > 0 && (
-        <ul className="flex flex-col gap-0.5 text-xs">
+        <ul className="flex flex-col gap-1 text-base">
           {lines.map((line, i) => (
             <li key={i}>- {line}</li>
           ))}
@@ -167,7 +168,7 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
           rel="noopener noreferrer"
           className="flex items-center gap-1 text-xs text-primary underline"
         >
-          <ExternalLink className="size-3" />
+          <Icon name="link_2" size={12} />
           {linkText(block)}
         </a>
       )}
@@ -243,7 +244,7 @@ function TrackLayer({
                   onClick={(e) => e.stopPropagation()}
                   title={linkText(block)}
                 >
-                  <ExternalLink className="size-3" />
+                  <Icon name="link_2" size={12} />
                 </a>
               )}
             </div>
@@ -331,7 +332,7 @@ export function MonthWeekRow({
           <div
             key={day}
             className={cn(
-              "relative flex-1 border-l p-1",
+              "relative min-w-0 flex-1 border-l p-1",
               isWeekend && "bg-muted/40",
               !inMonth && "bg-muted/40 opacity-50",
               isToday && "bg-muted",
@@ -341,17 +342,24 @@ export function MonthWeekRow({
             title={holiday ? `${formatDisplayDate(day)} — ${holiday.name}` : formatDisplayDate(day)}
           >
             <div
-              className="flex items-center gap-1 rounded px-1 py-0.5"
+              className="flex min-w-0 items-center gap-1 rounded px-1 py-0.5"
               style={phaseEntry ? { backgroundColor: phaseTitle?.color ?? "#94a3b8" } : undefined}
             >
-              {isToday && <span className="size-2 shrink-0 rounded-full bg-green-500" />}
+              {isToday && <span className="size-2 shrink-0 rounded-full bg-red-500" />}
               <span className={cn("shrink-0 text-xs font-medium", phaseEntry ? "text-foreground" : "text-muted-foreground")}>
                 {day.slice(8, 10)}
               </span>
               {phaseEntry && (
-                <span className="min-w-0 truncate text-[11px] font-medium text-foreground">
-                  {phaseTitle?.label ?? "Unknown phase"}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="min-w-0 truncate text-[11px] font-medium text-foreground">
+                      {phaseTitle?.label ?? "Unknown phase"}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {formatDisplayDate(day)} — {phaseTitle?.label ?? "Unknown phase"}
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>

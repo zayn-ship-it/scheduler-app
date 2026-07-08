@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, ExternalLink, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +60,7 @@ export function ProjectListPage() {
         </div>
         <Button asChild>
           <Link to="/backoffice/projects/new">
-            <Plus className="size-4" />
+            <Icon name="add" size={16} />
             New Project
           </Link>
         </Button>
@@ -110,7 +110,7 @@ export function ProjectListPage() {
                     <Link to={`/backoffice/projects/${project.id}/edit`}>Open Schedule</Link>
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => copyPublicLink(project.id)}>
-                    <ExternalLink className="size-4" />
+                    <Icon name="link_2" size={16} />
                     Copy Client Link
                   </Button>
                   <Button
@@ -119,7 +119,7 @@ export function ProjectListPage() {
                     className="text-destructive hover:text-destructive"
                     onClick={() => handleDelete(project)}
                   >
-                    <Trash2 className="size-4" />
+                    <Icon name="delete" size={16} />
                   </Button>
                 </div>
               </CardContent>

@@ -13,7 +13,7 @@
  * immediately on toggle.
  */
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -155,7 +155,7 @@ export function DeliverablesTable({ projectId, deliverables, onProjectChanged }:
               </TableCell>
               <TableCell>
                 <Button size="icon" variant="ghost" onClick={() => removeRow(row.id)}>
-                  <Trash2 className="size-4" />
+                  <Icon name="delete" size={16} />
                 </Button>
               </TableCell>
             </TableRow>
@@ -163,7 +163,7 @@ export function DeliverablesTable({ projectId, deliverables, onProjectChanged }:
         </TableBody>
       </Table>
       <Button size="sm" variant="outline" onClick={addRow} className="self-start">
-        <Plus className="size-4" />
+        <Icon name="add" size={16} />
         Add Deliverable
       </Button>
     </div>

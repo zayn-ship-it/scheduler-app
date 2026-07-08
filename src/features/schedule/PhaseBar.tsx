@@ -17,7 +17,7 @@
  * (see LaneRow.tsx).
  */
 import { useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -79,7 +79,7 @@ export function PhaseBar({ projectId, days, entries, readOnly, onProjectChanged 
         Phase
         {!readOnly && (
           <Button size="icon" variant="ghost" className="ml-auto size-6" onClick={() => setAddSeedDate(days[0])}>
-            <Plus className="size-3.5" />
+            <Icon name="add" size={14} />
           </Button>
         )}
       </div>

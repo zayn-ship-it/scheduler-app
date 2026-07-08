@@ -28,35 +28,29 @@ export const COLOR_PRESETS: ColorPreset[] = [
   { name: "Pink", value: "#db2777" },
 ];
 
-/** Light/medium/dark shade hexes for each COLOR_PRESETS entry, keyed by preset name. */
-const SHADES: Record<string, { light: string; medium: string; dark: string }> = {
-  Slate: { light: "#cbd5e1", medium: "#64748b", dark: "#1e293b" },
-  Red: { light: "#fca5a5", medium: "#ef4444", dark: "#991b1b" },
-  Orange: { light: "#fdba74", medium: "#f97316", dark: "#9a3412" },
-  Amber: { light: "#fcd34d", medium: "#f59e0b", dark: "#92400e" },
-  Green: { light: "#86efac", medium: "#22c55e", dark: "#166534" },
-  Teal: { light: "#5eead4", medium: "#14b8a6", dark: "#115e59" },
-  Blue: { light: "#93c5fd", medium: "#3b82f6", dark: "#1e40af" },
-  Indigo: { light: "#a5b4fc", medium: "#6366f1", dark: "#3730a3" },
-  Purple: { light: "#d8b4fe", medium: "#a855f7", dark: "#6b21a8" },
-  Pink: { light: "#f9a8d4", medium: "#ec4899", dark: "#9d174d" },
-};
-
 /**
- * Each COLOR_PRESETS entry plus 3 additional shades (light/medium/dark) of
- * the same colour - a wider palette for places that benefit from finer
- * distinctions between similarly-themed phases, e.g. the Phase Titles list
- * in Settings.
+ * The colour options offered for Phase Titles in Settings - a single "400"-intensity
+ * shade per named hue (no light/medium/dark variants), kept in its own list since
+ * phase titles favour a softer, more muted set of tones than block colours.
  */
-export const EXPANDED_COLOR_PRESETS: ColorPreset[] = COLOR_PRESETS.flatMap((preset) => {
-  const shades = SHADES[preset.name];
-  return [
-    preset,
-    { name: `${preset.name} Light`, value: shades.light },
-    { name: `${preset.name} Medium`, value: shades.medium },
-    { name: `${preset.name} Dark`, value: shades.dark },
-  ];
-});
+export const PHASE_COLOR_PRESETS: ColorPreset[] = [
+  { name: "Olive", value: "#8a8f66" },
+  { name: "Mist", value: "#9fb3bf" },
+  { name: "Mauve", value: "#a68fa0" },
+  { name: "Taupe", value: "#a89484" },
+  { name: "Red", value: "#f87171" },
+  { name: "Orange", value: "#fb923c" },
+  { name: "Amber", value: "#fbbf24" },
+  { name: "Lime", value: "#a3e635" },
+  { name: "Green", value: "#4ade80" },
+  { name: "Emerald", value: "#34d399" },
+  { name: "Teal", value: "#2dd4bf" },
+  { name: "Cyan", value: "#22d3ee" },
+  { name: "Sky", value: "#38bdf8" },
+  { name: "Violet", value: "#a78bfa" },
+  { name: "Pink", value: "#f472b6" },
+  { name: "Grey", value: "#9ca3af" },
+];
 
 /**
  * Picks black or white text for a given background hex colour based on

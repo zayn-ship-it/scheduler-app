@@ -13,7 +13,7 @@
  * page into months with nothing in them.
  */
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,7 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
   const [monthAnchor, setMonthAnchor] = useState(() => getDefaultVisibleMonth(project));
   const [phaseTitles, setPhaseTitles] = useState<PhaseTitle[]>([]);
   // Session-only - resets on every visit, never persisted.
-  const [showDeliverables, setShowDeliverables] = useState(true);
+  const [showDeliverables, setShowDeliverables] = useState(false);
   const [weekView, setWeekView] = useState(false);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
               disabled={!canGoPrev}
               onClick={() => setMonthAnchor((m) => addMonths(m, -1))}
             >
-              <ChevronLeft className="size-4" />
+              <Icon name="chevron_left" size={16} />
             </Button>
             <h2 className="text-sm font-semibold">{formatMonthLabel(monthAnchor)}</h2>
             <Button
@@ -73,7 +73,7 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
               disabled={!canGoNext}
               onClick={() => setMonthAnchor((m) => addMonths(m, 1))}
             >
-              <ChevronRight className="size-4" />
+              <Icon name="chevron_right" size={16} />
             </Button>
           </>
         )}

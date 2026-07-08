@@ -9,7 +9,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +96,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const showColorPicker = lane === "CLIENT";
   const showExternalLink = lane === "RJF" || lane === "CLIENT";
   const isLeaveTracker = lane === "LEAVE_TRACKER";
+  const showDeliverablePicker = lane !== "LEAVE_TRACKER" && lane !== "INTERNAL";
   const titleOptionsForLane = laneTitleOptions.filter((o) => o.lane === lane);
 
   // The dropdown offers preset titles, but a custom title must always remain possible (e.g. this block's
@@ -218,8 +219,14 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">N/A</SelectItem>
-                    <SelectItem value="online">Online</SelectItem>
-                    <SelectItem value="offline">Offline</SelectItem>
+                    <SelectItem value="online">
+                      <Icon name="videocam" fill size={16} />
+                      Online
+                    </SelectItem>
+                    <SelectItem value="offline">
+                      <Icon name="location_on" fill size={16} />
+                      Offline
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -306,11 +313,13 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <Label>Deliverables</Label>
-              <DeliverablePicker
-                deliverables={deliverables}
-                selectedIds={deliverableIds}
-                onChange={setDeliverableIds}
-              />
+              {showDeliverablePicker && (
+                <DeliverablePicker
+                  deliverables={deliverables}
+                  selectedIds={deliverableIds}
+                  onChange={setDeliverableIds}
+                />
+              )}
             </div>
             <Textarea
               value={informationText}
@@ -331,7 +340,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
                         onClick={() => setDeliverableIds((prev) => prev.filter((existingId) => existingId !== id))}
                         className="rounded-full hover:bg-foreground/10"
                       >
-                        <X className="size-3" />
+                        <Icon name="close" size={12} />
                       </button>
                     </Badge>
                   );
