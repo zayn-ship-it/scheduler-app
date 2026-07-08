@@ -155,11 +155,14 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
         <p className="text-xs text-muted-foreground">{[block.timeRange, block.mode].filter(Boolean).join("  ")}</p>
       )}
       {lines.length > 0 && (
-        <ul className="flex flex-col gap-1 text-base">
-          {lines.map((line, i) => (
-            <li key={i}>- {line}</li>
-          ))}
-        </ul>
+        <div className="rounded-md bg-muted/60 p-3">
+          <p className="mb-1.5 text-xs font-semibold text-foreground">Deliverables</p>
+          <ul className="flex flex-col gap-1 text-base">
+            {lines.map((line, i) => (
+              <li key={i}>- {line}</li>
+            ))}
+          </ul>
+        </div>
       )}
       {block.externalLink && (
         <a
@@ -201,8 +204,9 @@ function TrackLayer({
         const textColor = getContrastTextColor(displayColor);
         const isDarkText = textColor === RJF_BLOCK_COLOR;
         // A genuine start/end edge gets a small gap from the day boundary; an edge that continues across a row wrap stays flush.
-        const leftInset = segment.continuesBefore ? 0 : 4;
-        const rightInset = segment.continuesAfter ? 0 : 4;
+        // Delay markers always fill their whole day-square (no inset), matching how they render everywhere else in the app.
+        const leftInset = block.isDelay ? 0 : segment.continuesBefore ? 0 : 4;
+        const rightInset = block.isDelay ? 0 : segment.continuesAfter ? 0 : 4;
         return (
           <div
             key={block.id}
@@ -215,8 +219,8 @@ function TrackLayer({
             style={{
               left: `calc(${(segment.colStart / dayCount) * 100}% + ${leftInset}px)`,
               width: `calc(${(segment.colSpan / dayCount) * 100}% - ${leftInset + rightInset}px)`,
-              top: tops[index],
-              height: heights[index],
+              top: block.isDelay ? 0 : tops[index],
+              height: block.isDelay ? totalHeight : heights[index],
               backgroundColor: block.isDelay ? undefined : displayColor,
               color: block.isDelay ? undefined : textColor,
             }}

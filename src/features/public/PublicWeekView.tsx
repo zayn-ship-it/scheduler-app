@@ -53,6 +53,13 @@ function assignRows(blocks: ScheduleBlock[]): Map<string, number> {
   return assignment;
 }
 
+/** Total pixel height a lane's track needs once overlapping blocks are stacked into extra rows - shared by `LaneTrack` (to size its own container) and `PublicWeekView` (to size the delay-to-phase-end background band). */
+function laneTrackHeight(blocks: ScheduleBlock[]): number {
+  const rowAssignment = assignRows(blocks);
+  const rowCount = Math.max(1, ...Array.from(rowAssignment.values()).map((r) => r + 1));
+  return rowCount * WEEK_ROW_HEIGHT_PX;
+}
+
 function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: string[] }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -64,11 +71,14 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
         <p className="text-xs text-muted-foreground">{[block.timeRange, block.mode].filter(Boolean).join("  ")}</p>
       )}
       {lines.length > 0 && (
-        <ul className="flex flex-col gap-1 text-base">
-          {lines.map((line, i) => (
-            <li key={i}>- {line}</li>
-          ))}
-        </ul>
+        <div className="rounded-md bg-muted/60 p-3">
+          <p className="mb-1.5 text-xs font-semibold text-foreground">Deliverables</p>
+          <ul className="flex flex-col gap-1 text-base">
+            {lines.map((line, i) => (
+              <li key={i}>- {line}</li>
+            ))}
+          </ul>
+        </div>
       )}
       {block.externalLink && (
         <a
@@ -101,8 +111,7 @@ function LaneTrack({
   onOpenBlock: (id: string) => void;
 }) {
   const rowAssignment = assignRows(blocks);
-  const rowCount = Math.max(1, ...Array.from(rowAssignment.values()).map((r) => r + 1));
-  const trackHeight = rowCount * WEEK_ROW_HEIGHT_PX;
+  const trackHeight = laneTrackHeight(blocks);
 
   return (
     <div className="flex border-b">
@@ -194,6 +203,23 @@ export function PublicWeekView({
   const openBlock = openBlockId ? allBlocksById.get(openBlockId) : undefined;
   const openLines = openBlock ? infoLines(openBlock, deliverablesById) : [];
 
+  // A grey background band from the delay marker's date through to the end of the phase it interrupted,
+  // spanning behind the phase row and both lanes - a visual cue for "everything here got pushed back".
+  const delayBand = useMemo(() => {
+    const delayBlock = project.blocks.find((b) => b.isDelay);
+    if (!delayBlock) return null;
+    const phase = project.phaseBarEntries.find(
+      (p) => delayBlock.startDate >= p.startDate && delayBlock.startDate <= p.endDate,
+    );
+    if (!phase) return null;
+    const startIdx = Math.max(dayIndex(days, delayBlock.startDate), 0);
+    const endIdxRaw = dayIndex(days, phase.endDate);
+    const endIdx = endIdxRaw === -1 ? days.length - 1 : endIdxRaw;
+    if (endIdx < startIdx) return null;
+    return { startIdx, endIdx };
+  }, [project.blocks, project.phaseBarEntries, days]);
+  const delayBandHeight = PHASE_ROW_HEIGHT_PX + laneTrackHeight(rjfBlocks) + laneTrackHeight(clientBlocks);
+
   // Default scroll position: today's column near the left edge, clamped into the project's own range.
   useEffect(() => {
     if (days.length === 0 || !scrollRef.current) return;
@@ -253,56 +279,69 @@ export function PublicWeekView({
           })}
         </div>
 
-        {/* Phase row */}
-        <div className="relative flex border-b">
-          <div
-            className="sticky left-0 z-20 flex shrink-0 items-center border-r bg-background px-2 text-xs font-semibold text-muted-foreground"
-            style={{ width: LANE_LABEL_WIDTH_PX }}
-          >
-            Phase
-          </div>
-          <div className="relative" style={{ width: days.length * DAY_COLUMN_WIDTH_PX, height: PHASE_ROW_HEIGHT_PX }}>
-            {project.phaseBarEntries.map((entry) => {
-              const startIdx = Math.max(dayIndex(days, entry.startDate), 0);
-              const endIdx = dayIndex(days, entry.endDate);
-              const clampedEnd = endIdx === -1 ? days.length - 1 : endIdx;
-              if (clampedEnd < startIdx) return null;
-              const title = phaseTitlesById.get(entry.phaseTitleId);
-              return (
-                <div
-                  key={entry.id}
-                  className="absolute top-0 flex items-center justify-center truncate rounded px-2 text-[11px] font-medium text-foreground"
-                  style={{
-                    left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
-                    width: (clampedEnd - startIdx + 1) * DAY_COLUMN_WIDTH_PX - 4,
-                    height: PHASE_ROW_HEIGHT_PX,
-                    backgroundColor: title?.color ?? "#94a3b8",
-                  }}
-                  title={title?.label ?? "Unknown phase"}
-                >
-                  {title?.label ?? "Unknown phase"}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <div className="relative">
+          {delayBand && (
+            <div
+              className="pointer-events-none absolute top-0 z-0 bg-gray-400/25"
+              style={{
+                left: LANE_LABEL_WIDTH_PX + delayBand.startIdx * DAY_COLUMN_WIDTH_PX,
+                width: (delayBand.endIdx - delayBand.startIdx + 1) * DAY_COLUMN_WIDTH_PX,
+                height: delayBandHeight,
+              }}
+            />
+          )}
 
-        <LaneTrack
-          label="RJF"
-          blocks={rjfBlocks}
-          days={days}
-          deliverablesById={deliverablesById}
-          showDeliverables={showDeliverables}
-          onOpenBlock={setOpenBlockId}
-        />
-        <LaneTrack
-          label="Client"
-          blocks={clientBlocks}
-          days={days}
-          deliverablesById={deliverablesById}
-          showDeliverables={showDeliverables}
-          onOpenBlock={setOpenBlockId}
-        />
+          {/* Phase row */}
+          <div className="relative flex border-b">
+            <div
+              className="sticky left-0 z-20 flex shrink-0 items-center border-r bg-background px-2 text-xs font-semibold text-muted-foreground"
+              style={{ width: LANE_LABEL_WIDTH_PX }}
+            >
+              Phase
+            </div>
+            <div className="relative" style={{ width: days.length * DAY_COLUMN_WIDTH_PX, height: PHASE_ROW_HEIGHT_PX }}>
+              {project.phaseBarEntries.map((entry) => {
+                const startIdx = Math.max(dayIndex(days, entry.startDate), 0);
+                const endIdx = dayIndex(days, entry.endDate);
+                const clampedEnd = endIdx === -1 ? days.length - 1 : endIdx;
+                if (clampedEnd < startIdx) return null;
+                const title = phaseTitlesById.get(entry.phaseTitleId);
+                return (
+                  <div
+                    key={entry.id}
+                    className="absolute top-0 flex items-center justify-center truncate rounded px-2 text-[11px] font-medium text-foreground"
+                    style={{
+                      left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
+                      width: (clampedEnd - startIdx + 1) * DAY_COLUMN_WIDTH_PX - 4,
+                      height: PHASE_ROW_HEIGHT_PX,
+                      backgroundColor: title?.color ?? "#94a3b8",
+                    }}
+                    title={title?.label ?? "Unknown phase"}
+                  >
+                    {title?.label ?? "Unknown phase"}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <LaneTrack
+            label="RJF"
+            blocks={rjfBlocks}
+            days={days}
+            deliverablesById={deliverablesById}
+            showDeliverables={showDeliverables}
+            onOpenBlock={setOpenBlockId}
+          />
+          <LaneTrack
+            label="Client"
+            blocks={clientBlocks}
+            days={days}
+            deliverablesById={deliverablesById}
+            showDeliverables={showDeliverables}
+            onOpenBlock={setOpenBlockId}
+          />
+        </div>
       </div>
 
       <Sheet open={openBlock !== undefined} onOpenChange={(open) => !open && setOpenBlockId(null)}>

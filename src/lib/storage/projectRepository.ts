@@ -12,25 +12,41 @@ import type {
   PhaseBarEntry,
   ProjectVersion,
 } from "./types";
-import { todayIso, shiftRange } from "@/lib/dateUtils";
+import { todayIso, shiftRange, fromIsoDate } from "@/lib/dateUtils";
 
 /**
- * How a phase bar entry responds to a delay at `date`, in either direction (deltaDays = 1 to insert
- * a delay, -1 to undo one): a phase that hasn't started yet by `date` pushes wholesale (both start
- * and end move); a phase already under way at `date` (started before, still running on/after it)
- * just runs one day longer/shorter - only its end date moves. A phase that finished before `date`
- * is untouched. Applying this with the same `date` in both directions is symmetric: a pushed entry's
- * startDate stays >= date, and an expanded entry's startDate stays < date with endDate >= date, so
- * the same branch is taken on the way back out.
+ * How a block or phase bar entry responds to a delay at `date`, in either direction (deltaDays = 1 to
+ * insert a delay, -1 to undo one): one that hasn't started yet by `date` pushes wholesale (both start
+ * and end move); one already under way at `date` (started before, still running on/after it) just runs
+ * one day longer/shorter - only its end date moves. One that finished before `date` is untouched.
+ * Applying this with the same `date` in both directions is symmetric: a pushed item's startDate stays
+ * >= date, and an expanded item's startDate stays < date with endDate >= date, so the same branch is
+ * taken on the way back out. Shared by both schedule blocks and phase bar entries, since both are just
+ * a startDate/endDate range as far as this logic cares.
  */
-function applyDelayToPhaseEntry(entry: PhaseBarEntry, date: string, deltaDays: 1 | -1): PhaseBarEntry {
-  if (entry.startDate >= date) {
-    return { ...entry, ...shiftRange(entry.startDate, entry.endDate, deltaDays) };
+function applyDelayShift<T extends { startDate: string; endDate: string }>(item: T, date: string, deltaDays: 1 | -1): T {
+  if (item.startDate >= date) {
+    return {
+      ...item,
+      startDate: shiftOneBusinessDay(item.startDate, deltaDays),
+      endDate: shiftOneBusinessDay(item.endDate, deltaDays),
+    };
   }
-  if (entry.endDate >= date) {
-    return { ...entry, endDate: shiftRange(entry.endDate, entry.endDate, deltaDays).endDate };
+  if (item.endDate >= date) {
+    return { ...item, endDate: shiftOneBusinessDay(item.endDate, deltaDays) };
   }
-  return entry;
+  return item;
+}
+
+/** Shifts a date by one calendar day in `direction`, then nudges off a weekend landing (Sat/Sun -> Mon going forward, Sun/Sat -> Fri going backward) so delay shifts stay on a 5-day work week. */
+function shiftOneBusinessDay(dateIso: string, direction: 1 | -1): string {
+  let result = shiftRange(dateIso, dateIso, direction).startDate;
+  const dow = fromIsoDate(result).getDay(); // 0 = Sun, 6 = Sat
+  if (direction === 1 && dow === 6) result = shiftRange(result, result, 2).startDate;
+  else if (direction === 1 && dow === 0) result = shiftRange(result, result, 1).startDate;
+  else if (direction === -1 && dow === 0) result = shiftRange(result, result, -2).startDate;
+  else if (direction === -1 && dow === 6) result = shiftRange(result, result, -1).startDate;
+  return result;
 }
 
 async function reconstructProject(projectId: string): Promise<Project | undefined> {
@@ -401,12 +417,12 @@ export async function saveProjectVersion(projectId: string, label: string): Prom
 }
 
 /**
- * Inserts a 1-day "delay" block into `lane` (RJF/Client only) at `date`, then shifts every other
- * RJF/Client block whose startDate is on/after `date` forward by one day. Phase bar entries either
- * push wholesale (if they hadn't started by `date`) or simply run a day longer (if already under
- * way at `date`) - see `applyDelayToPhaseEntry`. Suppliers/Internal/Leave Tracker are left
- * untouched, as are blocks/phases that already finished before the delay. The pre-delay state is
- * captured as a new ProjectVersion first, so it stays viewable.
+ * Inserts a 1-day "delay" block into `lane` (RJF/Client only) at `date`, then applies `applyDelayShift`
+ * to every other RJF/Client block and every phase bar entry that hasn't already finished before `date`:
+ * one not yet started pushes wholesale, one already under way (straddling `date`) just runs a day
+ * longer. Suppliers/Internal/Leave Tracker are left untouched, as are blocks/phases that already
+ * finished before the delay. The pre-delay state is captured as a new ProjectVersion first, so it
+ * stays viewable.
  */
 export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT", date: string): Promise<Project | undefined> {
   const project = await getProjectById(projectId);
@@ -431,24 +447,24 @@ export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT"
   });
 
   const blocksToShift = project.blocks.filter(
-    (b) => (b.lane === "RJF" || b.lane === "CLIENT") && b.startDate >= date,
+    (b) => (b.lane === "RJF" || b.lane === "CLIENT") && b.endDate >= date,
   );
-  const entriesToShift = project.phaseBarEntries.filter((p) => p.startDate >= date || p.endDate >= date);
+  const entriesToShift = project.phaseBarEntries.filter((p) => p.endDate >= date);
 
   // Independent rows - shift them all in parallel instead of one round-trip at a time (this can otherwise take several seconds for a busy schedule).
   await Promise.all([
-    ...blocksToShift.map((block) => updateBlock(projectId, { ...block, ...shiftRange(block.startDate, block.endDate, 1) })),
-    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, applyDelayToPhaseEntry(entry, date, 1))),
+    ...blocksToShift.map((block) => updateBlock(projectId, applyDelayShift(block, date, 1))),
+    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, applyDelayShift(entry, date, 1))),
   ]);
 
   return getProjectById(projectId);
 }
 
 /**
- * Reverses `insertDelayBlock`: shifts every RJF/Client block (other than the delay marker itself)
- * and phase bar entry whose startDate is on/after the delay's own date back by one day, then
- * deletes the delay marker - restoring the schedule to exactly how it looked before the delay was
- * inserted. No new version snapshot is taken (undoing already returns to a known-good state).
+ * Reverses `insertDelayBlock`: applies `applyDelayShift` with deltaDays -1 to every RJF/Client block
+ * (other than the delay marker itself) and phase bar entry that hasn't finished before the delay's own
+ * date, then deletes the delay marker - restoring the schedule to exactly how it looked before the
+ * delay was inserted. No new version snapshot is taken (undoing already returns to a known-good state).
  */
 export async function removeDelayBlock(projectId: string, blockId: string): Promise<Project | undefined> {
   const project = await getProjectById(projectId);
@@ -459,13 +475,13 @@ export async function removeDelayBlock(projectId: string, blockId: string): Prom
 
   const date = delayBlock.startDate;
   const blocksToShift = project.blocks.filter(
-    (b) => b.id !== blockId && (b.lane === "RJF" || b.lane === "CLIENT") && b.startDate >= date,
+    (b) => b.id !== blockId && (b.lane === "RJF" || b.lane === "CLIENT") && b.endDate >= date,
   );
-  const entriesToShift = project.phaseBarEntries.filter((p) => p.startDate >= date || p.endDate >= date);
+  const entriesToShift = project.phaseBarEntries.filter((p) => p.endDate >= date);
 
   await Promise.all([
-    ...blocksToShift.map((block) => updateBlock(projectId, { ...block, ...shiftRange(block.startDate, block.endDate, -1) })),
-    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, applyDelayToPhaseEntry(entry, date, -1))),
+    ...blocksToShift.map((block) => updateBlock(projectId, applyDelayShift(block, date, -1))),
+    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, applyDelayShift(entry, date, -1))),
   ]);
 
   await removeBlock(projectId, blockId);
