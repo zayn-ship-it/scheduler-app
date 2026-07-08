@@ -95,6 +95,29 @@ export interface ScheduleBlock {
   externalLink: string | null;
   /** Optional custom label for externalLink, e.g. "Zoom Call" - falls back to "Open meeting link" when unset. */
   linkLabel: string | null;
+  /**
+   * Marks this as a special 1-day "delay" block (RJF/Client lanes only) rather than a normal
+   * content block - inserting one shifts every other RJF/Client block/phase on or after its date
+   * forward by a day (see `insertDelayBlock` in projectRepository.ts) and snapshots a new
+   * ProjectVersion capturing the pre-delay state. A delay block ignores title/mode/information/
+   * deliverableIds/color/links - it always renders as a plain grey "Delay" marker.
+   */
+  isDelay: boolean;
+}
+
+/**
+ * A read-only snapshot of a project's schedule (blocks + phase bar entries), taken automatically
+ * whenever a delay block is inserted (preserving the pre-delay state) or manually via "Save version".
+ * Selecting one in the version dropdown (back office or live link) displays that snapshot instead
+ * of the live data - it does not restore/overwrite the live project.
+ */
+export interface ProjectVersion {
+  id: string;
+  projectId: string;
+  label: string;
+  blocks: ScheduleBlock[];
+  phaseBarEntries: PhaseBarEntry[];
+  createdAt: string;
 }
 
 /**

@@ -208,6 +208,7 @@ function TrackLayer({
             key={block.id}
             className={cn(
               "pointer-events-auto absolute flex cursor-pointer flex-col justify-center gap-1 overflow-hidden px-2 py-1",
+              block.isDelay && "items-center gap-0.5 bg-gray-500 text-white",
               !segment.continuesBefore && "rounded-l-md",
               !segment.continuesAfter && "rounded-r-md",
             )}
@@ -216,52 +217,61 @@ function TrackLayer({
               width: `calc(${(segment.colSpan / dayCount) * 100}% - ${leftInset + rightInset}px)`,
               top: tops[index],
               height: heights[index],
-              backgroundColor: displayColor,
-              color: textColor,
+              backgroundColor: block.isDelay ? undefined : displayColor,
+              color: block.isDelay ? undefined : textColor,
             }}
             onClick={() => setOpenBlockId(block.id)}
           >
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-              <span className="truncate text-left text-[14px] font-medium leading-tight">
-                {block.title || "(untitled)"}
-              </span>
-              {blockBadgeText(block) && (
-                <span
-                  className={cn(
-                    "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
-                    isDarkText ? "border-foreground/40" : "border-white/70",
+            {block.isDelay ? (
+              <>
+                <Icon name="next_plan" size={18} />
+                <span className="text-[10px] leading-tight text-gray-100">Delay</span>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span className="truncate text-left text-[14px] font-medium leading-tight">
+                    {block.title || "(untitled)"}
+                  </span>
+                  {blockBadgeText(block) && (
+                    <span
+                      className={cn(
+                        "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
+                        isDarkText ? "border-foreground/40" : "border-white/70",
+                      )}
+                    >
+                      {blockBadgeText(block)}
+                    </span>
                   )}
-                >
-                  {blockBadgeText(block)}
-                </span>
-              )}
-              {block.externalLink && (
-                <a
-                  href={block.externalLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
-                  onClick={(e) => e.stopPropagation()}
-                  title={linkText(block)}
-                >
-                  <Icon name="link_2" size={12} />
-                </a>
-              )}
-            </div>
-            {lines.length > 0 && (
-              <span className="truncate text-[12px] leading-tight opacity-90">{lines[0]}</span>
-            )}
-            {lines.length > 1 && (
-              <button
-                type="button"
-                className="w-fit truncate text-left text-[12px] leading-tight opacity-90 hover:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenBlockId(block.id);
-                }}
-              >
-                See more
-              </button>
+                  {block.externalLink && (
+                    <a
+                      href={block.externalLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
+                      onClick={(e) => e.stopPropagation()}
+                      title={linkText(block)}
+                    >
+                      <Icon name="link_2" size={12} />
+                    </a>
+                  )}
+                </div>
+                {lines.length > 0 && (
+                  <span className="truncate text-[12px] leading-tight opacity-90">{lines[0]}</span>
+                )}
+                {lines.length > 1 && (
+                  <button
+                    type="button"
+                    className="w-fit truncate text-left text-[12px] leading-tight opacity-90 hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenBlockId(block.id);
+                    }}
+                  >
+                    See more
+                  </button>
+                )}
+              </>
             )}
           </div>
         );

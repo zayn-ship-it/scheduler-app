@@ -39,14 +39,16 @@ import {
   defaultNewProjectDateRange,
   getProjectById,
   patchProject,
+  saveProjectVersion,
 } from "@/lib/storage/projectRepository";
 import { getPeople } from "@/lib/storage/peopleRepository";
-import type { Deliverable, Project } from "@/lib/storage/types";
+import type { Deliverable, Project, ProjectVersion } from "@/lib/storage/types";
 import { todayIso } from "@/lib/dateUtils";
 import { DeliverablesTable } from "./DeliverablesTable";
 import { DeliverablesProgress } from "@/features/schedule/DeliverablesProgress";
 import { ExportToSheetButton } from "./ExportToSheetButton";
 import { ScheduleGrid } from "@/features/schedule/ScheduleGrid";
+import { VersionSelect, CURRENT_VERSION_VALUE } from "@/features/schedule/VersionSelect";
 
 /** The header/meta fields shared between create and edit modes. */
 interface HeaderFields {
@@ -86,6 +88,9 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(mode === "edit");
+  const [selectedVersionId, setSelectedVersionId] = useState(CURRENT_VERSION_VALUE);
+  const [selectedVersion, setSelectedVersion] = useState<ProjectVersion | null>(null);
+  const [versionsRefreshKey, setVersionsRefreshKey] = useState(0);
 
   useEffect(() => {
     if (mode === "edit" && projectId) {
@@ -121,6 +126,19 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
     if (projectId) {
       const updated = await getProjectById(projectId);
       setProject(updated ?? null);
+      setVersionsRefreshKey((k) => k + 1);
+    }
+  }
+
+  async function handleSaveVersion() {
+    if (!project) return;
+    try {
+      await saveProjectVersion(project.id, project.scheduleVersion || "Untitled version");
+      setVersionsRefreshKey((k) => k + 1);
+      toast.success("Version saved");
+    } catch (error) {
+      console.error("Failed to save version:", error);
+      toast.error("Failed to save version");
     }
   }
 
@@ -279,10 +297,38 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
       {mode === "edit" && project && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Schedule</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Schedule</CardTitle>
+              <div className="flex items-center gap-2">
+                <VersionSelect
+                  projectId={project.id}
+                  value={selectedVersionId}
+                  refreshKey={versionsRefreshKey}
+                  onChange={(value, version) => {
+                    setSelectedVersionId(value);
+                    setSelectedVersion(version);
+                  }}
+                />
+                <Button variant="outline" size="sm" onClick={handleSaveVersion}>
+                  Save version
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <ScheduleGrid project={project} readOnly={false} onProjectChanged={refreshFromStorage} />
+            {selectedVersionId === CURRENT_VERSION_VALUE ? (
+              <ScheduleGrid project={project} readOnly={false} onProjectChanged={refreshFromStorage} />
+            ) : (
+              <ScheduleGrid
+                project={{
+                  ...project,
+                  blocks: selectedVersion?.blocks ?? [],
+                  phaseBarEntries: selectedVersion?.phaseBarEntries ?? [],
+                }}
+                readOnly
+                onProjectChanged={() => {}}
+              />
+            )}
           </CardContent>
         </Card>
       )}

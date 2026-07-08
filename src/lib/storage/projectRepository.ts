@@ -10,8 +10,9 @@ import type {
   Deliverable,
   ScheduleBlock,
   PhaseBarEntry,
+  ProjectVersion,
 } from "./types";
-import { todayIso } from "@/lib/dateUtils";
+import { todayIso, shiftRange } from "@/lib/dateUtils";
 
 async function reconstructProject(projectId: string): Promise<Project | undefined> {
   const { data: projectData } = await supabase
@@ -72,6 +73,7 @@ async function reconstructProject(projectId: string): Promise<Project | undefine
       personId: b.person_id,
       externalLink: b.external_link,
       linkLabel: b.link_label,
+      isDelay: b.is_delay ?? false,
     })),
     phaseBarEntries: (phaseBarEntries || []).map((p: any) => ({
       id: p.id,
@@ -265,6 +267,7 @@ export async function addBlock(
     person_id: block.personId,
     external_link: block.externalLink,
     link_label: block.linkLabel,
+    is_delay: block.isDelay,
   });
 
   if (error) throw error;
@@ -287,6 +290,7 @@ export async function updateBlock(_projectId: string, block: ScheduleBlock): Pro
       person_id: block.personId,
       external_link: block.externalLink,
       link_label: block.linkLabel,
+      is_delay: block.isDelay,
     })
     .eq("id", block.id);
 
@@ -332,6 +336,94 @@ export async function updatePhaseBarEntry(_projectId: string, entry: PhaseBarEnt
 export async function removePhaseBarEntry(_projectId: string, entryId: string): Promise<void> {
   const { error } = await supabase.from("phase_bar_entries").delete().eq("id", entryId);
   if (error) throw error;
+}
+
+// Project versions (delay-block snapshots + manual checkpoints)
+export async function listProjectVersions(projectId: string): Promise<ProjectVersion[]> {
+  const { data, error } = await supabase
+    .from("project_versions")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[projectRepository] listProjectVersions error:", error);
+    return [];
+  }
+
+  return (data || []).map((v: any) => ({
+    id: v.id,
+    projectId: v.project_id,
+    label: v.label,
+    blocks: v.blocks,
+    phaseBarEntries: v.phase_bar_entries,
+    createdAt: v.created_at,
+  }));
+}
+
+/** Snapshots the project's current blocks/phase bar entries as a new named version - a manual checkpoint, no date shift. */
+export async function saveProjectVersion(projectId: string, label: string): Promise<ProjectVersion> {
+  const project = await getProjectById(projectId);
+  if (!project) throw new Error("Project not found");
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("project_versions").insert({
+    id,
+    project_id: projectId,
+    label,
+    blocks: project.blocks,
+    phase_bar_entries: project.phaseBarEntries,
+    created_at: now,
+  });
+
+  if (error) throw error;
+  return { id, projectId, label, blocks: project.blocks, phaseBarEntries: project.phaseBarEntries, createdAt: now };
+}
+
+/**
+ * Inserts a 1-day "delay" block into `lane` (RJF/Client only) at `date`, then shifts every other
+ * RJF/Client block and phase bar entry whose startDate is on/after `date` forward by one day.
+ * Suppliers/Internal/Leave Tracker are left untouched, as are blocks that already finished before
+ * the delay. The pre-delay state is captured as a new ProjectVersion first, so it stays viewable.
+ */
+export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT", date: string): Promise<Project | undefined> {
+  const project = await getProjectById(projectId);
+  if (!project) return undefined;
+
+  await saveProjectVersion(projectId, project.scheduleVersion || "Before delay");
+
+  await addBlock(projectId, {
+    lane,
+    title: "",
+    startDate: date,
+    endDate: date,
+    timeRange: "",
+    mode: null,
+    information: [],
+    deliverableIds: [],
+    color: "",
+    personId: null,
+    externalLink: null,
+    linkLabel: null,
+    isDelay: true,
+  });
+
+  const blocksToShift = project.blocks.filter(
+    (b) => (b.lane === "RJF" || b.lane === "CLIENT") && b.startDate >= date,
+  );
+  for (const block of blocksToShift) {
+    const shifted = shiftRange(block.startDate, block.endDate, 1);
+    await updateBlock(projectId, { ...block, ...shifted });
+  }
+
+  const entriesToShift = project.phaseBarEntries.filter((p) => p.startDate >= date);
+  for (const entry of entriesToShift) {
+    const shifted = shiftRange(entry.startDate, entry.endDate, 1);
+    await updatePhaseBarEntry(projectId, { ...entry, ...shifted });
+  }
+
+  return getProjectById(projectId);
 }
 
 export function defaultNewProjectDateRange(): { startDate: string; endDate: string } {

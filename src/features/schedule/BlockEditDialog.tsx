@@ -151,6 +151,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
       personId,
       externalLink: showExternalLink ? externalLink.trim() || null : null,
       linkLabel: showExternalLink ? linkLabel.trim() || null : null,
+      isDelay: existing?.isDelay ?? false,
       ...clamped,
     };
 

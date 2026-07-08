@@ -124,31 +124,43 @@ function LaneTrack({
           return (
             <div
               key={block.id}
-              className="absolute flex cursor-pointer flex-col justify-center gap-0.5 overflow-hidden rounded-md px-2 py-1"
+              className={cn(
+                "absolute flex cursor-pointer flex-col justify-center gap-0.5 overflow-hidden rounded-md px-2 py-1",
+                block.isDelay && "items-center gap-0 bg-gray-500 text-white",
+              )}
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
                 width: span * DAY_COLUMN_WIDTH_PX - 4,
                 top: rowIndex * WEEK_ROW_HEIGHT_PX + 2,
                 height: WEEK_ROW_HEIGHT_PX - 4,
-                backgroundColor: displayColor,
-                color: textColor,
+                backgroundColor: block.isDelay ? undefined : displayColor,
+                color: block.isDelay ? undefined : textColor,
               }}
               onClick={() => onOpenBlock(block.id)}
             >
-              <span className="truncate text-left text-[13px] font-medium leading-tight">
-                {block.title || "(untitled)"}
-              </span>
-              {lines.length > 0 && (
-                <button
-                  type="button"
-                  className="w-fit truncate text-left text-[11px] leading-tight opacity-90 hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenBlock(block.id);
-                  }}
-                >
-                  See more
-                </button>
+              {block.isDelay ? (
+                <>
+                  <Icon name="next_plan" size={16} />
+                  <span className="text-[9px] leading-tight text-gray-100">Delay</span>
+                </>
+              ) : (
+                <>
+                  <span className="truncate text-left text-[13px] font-medium leading-tight">
+                    {block.title || "(untitled)"}
+                  </span>
+                  {lines.length > 0 && (
+                    <button
+                      type="button"
+                      className="w-fit truncate text-left text-[11px] leading-tight opacity-90 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenBlock(block.id);
+                      }}
+                    >
+                      See more
+                    </button>
+                  )}
+                </>
               )}
             </div>
           );

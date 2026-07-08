@@ -28,6 +28,8 @@ import type { PhaseTitle, Project } from "@/lib/storage/types";
 import { getPhaseTitles } from "@/lib/storage/phaseTitleRepository";
 import { MonthWeekRow } from "./MonthWeekRow";
 import { PublicWeekView } from "./PublicWeekView";
+import { VersionSelect, CURRENT_VERSION_VALUE } from "@/features/schedule/VersionSelect";
+import type { ProjectVersion } from "@/lib/storage/types";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -37,10 +39,22 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
   // Session-only - resets on every visit, never persisted.
   const [showDeliverables, setShowDeliverables] = useState(false);
   const [weekView, setWeekView] = useState(false);
+  const [selectedVersionId, setSelectedVersionId] = useState(CURRENT_VERSION_VALUE);
+  const [selectedVersion, setSelectedVersion] = useState<ProjectVersion | null>(null);
 
   useEffect(() => {
     getPhaseTitles().then(setPhaseTitles);
   }, []);
+
+  // Historical versions are a read-only snapshot swap - only blocks/phases change, everything else (header, deliverables) stays live.
+  const displayProject: Project =
+    selectedVersionId === CURRENT_VERSION_VALUE
+      ? project
+      : {
+          ...project,
+          blocks: selectedVersion?.blocks ?? [],
+          phaseBarEntries: selectedVersion?.phaseBarEntries ?? [],
+        };
 
   const firstMonth = toMonthAnchor(project.startDate);
   const lastMonth = toMonthAnchor(project.endDate);
@@ -48,8 +62,8 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
   const canGoNext = monthAnchor < lastMonth;
 
   const weeks = getMonthWeekdayGrid(monthAnchor);
-  const rjfBlocks = project.blocks.filter((b) => b.lane === "RJF");
-  const clientBlocks = project.blocks.filter((b) => b.lane === "CLIENT");
+  const rjfBlocks = displayProject.blocks.filter((b) => b.lane === "RJF");
+  const clientBlocks = displayProject.blocks.filter((b) => b.lane === "CLIENT");
 
   return (
     <div className="rounded-md border">
@@ -92,10 +106,18 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
             Week view
           </Label>
         </div>
+        <VersionSelect
+          projectId={project.id}
+          value={selectedVersionId}
+          onChange={(value, version) => {
+            setSelectedVersionId(value);
+            setSelectedVersion(version);
+          }}
+        />
       </div>
 
       {weekView ? (
-        <PublicWeekView project={project} showDeliverables={showDeliverables} />
+        <PublicWeekView project={displayProject} showDeliverables={showDeliverables} />
       ) : (
         <>
           <div className="flex border-b bg-muted/30">
@@ -111,7 +133,7 @@ export function PublicMonthCalendar({ project }: { project: Project }) {
               key={week[0]}
               days={week}
               monthAnchor={monthAnchor}
-              phaseEntries={project.phaseBarEntries}
+              phaseEntries={displayProject.phaseBarEntries}
               phaseTitles={phaseTitles}
               rjfBlocks={rjfBlocks}
               clientBlocks={clientBlocks}

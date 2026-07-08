@@ -31,6 +31,7 @@ import { useBlockDragResize } from "./useBlockDragResize";
 import { BlockEditDialog } from "./BlockEditDialog";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "./colorPresets";
 import { infoLines } from "./deliverableFormat";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
 interface ScheduleBlockProps {
@@ -97,8 +98,9 @@ export function ScheduleBlock({
     <>
       <div
         className={cn(
-          "group absolute flex flex-col justify-start overflow-hidden rounded-md px-2 py-1 shadow-sm select-none",
-          isNeutralLane && "border border-foreground/30 bg-transparent text-foreground",
+          "group absolute flex flex-col overflow-hidden rounded-md px-2 py-1 shadow-sm select-none",
+          block.isDelay ? "items-center justify-center gap-0.5 bg-gray-500 text-white" : "justify-start",
+          isNeutralLane && !block.isDelay && "border border-foreground/30 bg-transparent text-foreground",
           !readOnly && "cursor-grab active:cursor-grabbing",
           isDragging && "z-30 opacity-90 shadow-lg",
         )}
@@ -107,8 +109,8 @@ export function ScheduleBlock({
           width: span * DAY_COLUMN_WIDTH_PX - 4,
           top: rowIndex * BLOCK_ROW_HEIGHT_PX + 2,
           height: BLOCK_ROW_HEIGHT_PX - 4,
-          backgroundColor: isNeutralLane ? undefined : displayColor,
-          color: textColor,
+          backgroundColor: block.isDelay ? undefined : isNeutralLane ? undefined : displayColor,
+          color: block.isDelay ? undefined : textColor,
         }}
         onPointerDown={onBodyPointerDown}
         onClick={() => {
@@ -120,7 +122,7 @@ export function ScheduleBlock({
           }
           setIsEditOpen(true);
         }}
-        title={block.title}
+        title={block.isDelay ? "Delay" : block.title}
       >
         {!readOnly && (
           <div
@@ -131,25 +133,34 @@ export function ScheduleBlock({
           </div>
         )}
 
-        <div className="flex min-w-0 items-center gap-1.5">
-          <p className="truncate text-xs font-semibold leading-tight">{block.title || "(untitled)"}</p>
-          {(block.timeRange || block.mode) && (
-            <span
-              className={cn(
-                "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
-                isNeutralLane || isDarkText ? "border-foreground/40" : "border-white/70",
+        {block.isDelay ? (
+          <>
+            <Icon name="next_plan" size={20} />
+            <span className="text-[10px] leading-tight text-gray-100">Delay</span>
+          </>
+        ) : (
+          <>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="truncate text-xs font-semibold leading-tight">{block.title || "(untitled)"}</p>
+              {(block.timeRange || block.mode) && (
+                <span
+                  className={cn(
+                    "shrink-0 whitespace-nowrap rounded-full border px-1.5 py-[1px] text-[9px] leading-tight",
+                    isNeutralLane || isDarkText ? "border-foreground/40" : "border-white/70",
+                  )}
+                >
+                  {[block.timeRange, block.mode].filter(Boolean).join("  ")}
+                </span>
               )}
-            >
-              {[block.timeRange, block.mode].filter(Boolean).join("  ")}
-            </span>
-          )}
-        </div>
-        {person?.name && <p className="truncate text-[10px] leading-tight opacity-80">{person.name}</p>}
-        {lines.map((line, i) => (
-          <p key={i} className="truncate text-[10px] leading-tight opacity-90">
-            {line}
-          </p>
-        ))}
+            </div>
+            {person?.name && <p className="truncate text-[10px] leading-tight opacity-80">{person.name}</p>}
+            {lines.map((line, i) => (
+              <p key={i} className="truncate text-[10px] leading-tight opacity-90">
+                {line}
+              </p>
+            ))}
+          </>
+        )}
 
         {!readOnly && (
           <div

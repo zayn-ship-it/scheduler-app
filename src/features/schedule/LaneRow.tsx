@@ -26,6 +26,7 @@ import { getHolidayForDate } from "@/data/saPublicHolidays";
 import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX, BLOCK_ROW_HEIGHT_PX } from "./gridConstants";
 import { ScheduleBlock } from "./ScheduleBlock";
 import { BlockEditDialog } from "./BlockEditDialog";
+import { InsertDelayDialog } from "./InsertDelayDialog";
 
 /** Greedily assigns each block a stacking row index such that no two overlapping blocks share a row. */
 function assignRows(blocks: ScheduleBlockType[]): Map<string, number> {
@@ -62,9 +63,11 @@ export function LaneRow({ projectId, lane, blocks, deliverables, days, bounds, r
   // The date to seed the add-block dialog with, or null when it's closed. Set either by the
   // sticky "+" button (first visible day) or by clicking an empty day cell (that exact day).
   const [addSeedDate, setAddSeedDate] = useState<string | null>(null);
+  const [delaySeedDate, setDelaySeedDate] = useState<string | null>(null);
   const rowAssignment = assignRows(blocks);
   const rowCount = Math.max(1, ...Array.from(rowAssignment.values()).map((r) => r + 1));
   const trackHeight = rowCount * BLOCK_ROW_HEIGHT_PX;
+  const canInsertDelay = lane === "RJF" || lane === "CLIENT";
 
   return (
     <div className="flex border-b">
@@ -74,8 +77,13 @@ export function LaneRow({ projectId, lane, blocks, deliverables, days, bounds, r
       >
         {LANE_LABELS[lane]}
         {!readOnly && (
-          <Button size="icon" variant="ghost" className="ml-auto size-6" onClick={() => setAddSeedDate(days[0])}>
+          <Button size="icon" variant="ghost" className="ml-auto size-6" onClick={() => setAddSeedDate(days[0])} title="Add block">
             <Icon name="add" size={14} />
+          </Button>
+        )}
+        {!readOnly && canInsertDelay && (
+          <Button size="icon" variant="ghost" className="size-6" onClick={() => setDelaySeedDate(days[0])} title="Insert delay">
+            <Icon name="next_plan" size={14} />
           </Button>
         )}
       </div>
@@ -129,6 +137,16 @@ export function LaneRow({ projectId, lane, blocks, deliverables, days, bounds, r
           bounds={bounds}
           deliverables={deliverables}
           onClose={() => setAddSeedDate(null)}
+          onSaved={onProjectChanged}
+        />
+      )}
+
+      {delaySeedDate && (lane === "RJF" || lane === "CLIENT") && (
+        <InsertDelayDialog
+          projectId={projectId}
+          lane={lane}
+          seedDate={delaySeedDate}
+          onClose={() => setDelaySeedDate(null)}
           onSaved={onProjectChanged}
         />
       )}
