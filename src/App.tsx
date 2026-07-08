@@ -4,11 +4,11 @@
  * Top-level route table for the whole app.
  *
  *   /                                  -> redirects to /backoffice/projects
- *   /backoffice/*                      -> password-gated admin area (BackOfficeLayout + nested routes)
- *   /schedule/:projectId               -> public, read-only client-facing schedule view (no password)
+ *   /backoffice/*                      -> magic-link-gated admin area (BackOfficeLayout + nested routes)
+ *   /schedule/:projectId               -> public, read-only client-facing schedule view (no auth)
  */
 import { Navigate, Route, Routes } from "react-router-dom";
-import { PasswordGate } from "@/auth/PasswordGate";
+import { AuthGate } from "@/auth/AuthGate";
 import { BackOfficeLayout } from "@/features/backoffice/BackOfficeLayout";
 import { ProjectListPage } from "@/features/backoffice/ProjectListPage";
 import { ProjectFormPage } from "@/features/backoffice/ProjectFormPage";
@@ -23,9 +23,9 @@ export default function App() {
       <Route
         path="/backoffice"
         element={
-          <PasswordGate>
+          <AuthGate>
             <BackOfficeLayout />
-          </PasswordGate>
+          </AuthGate>
         }
       >
         <Route index element={<Navigate to="projects" replace />} />

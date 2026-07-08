@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addPerson, getPeople, removePerson } from "@/lib/storage/peopleRepository";
+import { addPerson, getPeople, removePerson, updatePerson } from "@/lib/storage/peopleRepository";
 import {
   addPhaseTitle,
   getPhaseTitles,
@@ -32,6 +32,7 @@ import {
   addLaneTitleOption,
   getLaneTitleOptions,
   removeLaneTitleOption,
+  updateLaneTitleOption,
 } from "@/lib/storage/laneTitleOptionRepository";
 import {
   getGlobalTermsAndConditions,
@@ -60,6 +61,7 @@ export function SettingsPage() {
 
 function PeopleSection() {
   const [people, setPeople] = useState<Person[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
 
@@ -67,17 +69,33 @@ function PeopleSection() {
     getPeople().then(setPeople);
   }, []);
 
-  async function handleAdd() {
+  function resetForm() {
+    setEditingId(null);
+    setName("");
+    setRole("");
+  }
+
+  function startEdit(person: Person) {
+    setEditingId(person.id);
+    setName(person.name);
+    setRole(person.role);
+  }
+
+  async function handleSave() {
     if (!name.trim()) return;
     try {
-      await addPerson({ name: name.trim(), role: role.trim() });
+      if (editingId) {
+        await updatePerson({ id: editingId, name: name.trim(), role: role.trim() });
+        toast.success("Person updated");
+      } else {
+        await addPerson({ name: name.trim(), role: role.trim() });
+        toast.success("Person added");
+      }
       setPeople(await getPeople());
-      setName("");
-      setRole("");
-      toast.success("Person added");
+      resetForm();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to add person");
+      toast.error("Failed to save person");
     }
   }
 
@@ -87,6 +105,7 @@ function PeopleSection() {
     try {
       await removePerson(person.id);
       setPeople(await getPeople());
+      if (editingId === person.id) resetForm();
       toast.success("Person removed");
     } catch (error) {
       console.error(error);
@@ -113,10 +132,15 @@ function PeopleSection() {
             </label>
             <Input id="person-role" value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Designer" />
           </div>
-          <Button onClick={handleAdd} disabled={!name.trim()}>
+          <Button onClick={handleSave} disabled={!name.trim()}>
             <Icon name="add" size={16} />
-            Add
+            {editingId ? "Save changes" : "Add"}
           </Button>
+          {editingId && (
+            <Button variant="ghost" onClick={resetForm}>
+              Cancel
+            </Button>
+          )}
         </div>
 
         {people.length === 0 ? (
@@ -129,9 +153,14 @@ function PeopleSection() {
                   <p className="text-sm font-medium">{person.name}</p>
                   {person.role && <p className="text-xs text-muted-foreground">{person.role}</p>}
                 </div>
-                <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(person)}>
-                  <Icon name="delete" size={16} />
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => startEdit(person)}>
+                    <Icon name="edit" size={16} />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(person)}>
+                    <Icon name="delete" size={16} />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -289,6 +318,7 @@ const CONFIGURABLE_LANES: Lane[] = ["RJF", "SUPPLIERS", "INTERNAL", "CLIENT"];
 function BlockTitlesSection() {
   const [lane, setLane] = useState<Lane>(CONFIGURABLE_LANES[0]);
   const [options, setOptions] = useState<LaneTitleOption[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
 
   useEffect(() => {
@@ -297,16 +327,32 @@ function BlockTitlesSection() {
 
   const optionsForLane = options.filter((o) => o.lane === lane);
 
-  async function handleAdd() {
+  function resetForm() {
+    setEditingId(null);
+    setLabel("");
+  }
+
+  function startEdit(option: LaneTitleOption) {
+    setEditingId(option.id);
+    setLane(option.lane);
+    setLabel(option.label);
+  }
+
+  async function handleSave() {
     if (!label.trim()) return;
     try {
-      await addLaneTitleOption({ lane, label: label.trim() });
+      if (editingId) {
+        await updateLaneTitleOption({ id: editingId, lane, label: label.trim() });
+        toast.success("Title option updated");
+      } else {
+        await addLaneTitleOption({ lane, label: label.trim() });
+        toast.success("Title option added");
+      }
       setOptions(await getLaneTitleOptions());
-      setLabel("");
-      toast.success("Title option added");
+      resetForm();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to add title option");
+      toast.error("Failed to save title option");
     }
   }
 
@@ -314,6 +360,7 @@ function BlockTitlesSection() {
     try {
       await removeLaneTitleOption(option.id);
       setOptions(await getLaneTitleOptions());
+      if (editingId === option.id) resetForm();
       toast.success("Title option removed");
     } catch (error) {
       console.error(error);
@@ -353,10 +400,15 @@ function BlockTitlesSection() {
             </label>
             <Input id="lane-title-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Client Review" />
           </div>
-          <Button onClick={handleAdd} disabled={!label.trim()}>
+          <Button onClick={handleSave} disabled={!label.trim()}>
             <Icon name="add" size={16} />
-            Add
+            {editingId ? "Save changes" : "Add"}
           </Button>
+          {editingId && (
+            <Button variant="ghost" onClick={resetForm}>
+              Cancel
+            </Button>
+          )}
         </div>
 
         {optionsForLane.length === 0 ? (
@@ -369,9 +421,14 @@ function BlockTitlesSection() {
             {optionsForLane.map((option) => (
               <div key={option.id} className="flex items-center justify-between px-4 py-3">
                 <p className="text-sm font-medium">{option.label}</p>
-                <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(option)}>
-                  <Icon name="delete" size={16} />
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => startEdit(option)}>
+                    <Icon name="edit" size={16} />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleRemove(option)}>
+                    <Icon name="delete" size={16} />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

@@ -38,6 +38,15 @@ export async function addLaneTitleOption(input: Omit<LaneTitleOption, "id">): Pr
   return { ...input, id };
 }
 
+export async function updateLaneTitleOption(updated: LaneTitleOption): Promise<void> {
+  const { error } = await supabase
+    .from("lane_title_options")
+    .update({ lane: updated.lane, label: updated.label })
+    .eq("id", updated.id);
+
+  if (error) throw error;
+}
+
 export async function removeLaneTitleOption(id: string): Promise<void> {
   const { error } = await supabase.from("lane_title_options").delete().eq("id", id);
   if (error) throw error;

@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addBlock, insertDelayBlock, removeBlock, updateBlock } from "@/lib/storage/projectRepository";
+import { addBlock, insertDelayBlock, removeBlock, removeDelayBlock, updateBlock } from "@/lib/storage/projectRepository";
 import { getPeople } from "@/lib/storage/peopleRepository";
 import { getLaneTitleOptions } from "@/lib/storage/laneTitleOptionRepository";
 import {
@@ -44,7 +44,7 @@ import {
   type Mode,
   type ScheduleBlock,
 } from "@/lib/storage/types";
-import { clampRangeToBounds } from "@/lib/dateUtils";
+import { clampRangeToBounds, formatDisplayDate } from "@/lib/dateUtils";
 import { COLOR_PRESETS, RJF_BLOCK_COLOR } from "./colorPresets";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +71,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const [people, setPeople] = useState<any[]>([]);
   const [laneTitleOptions, setLaneTitleOptions] = useState<LaneTitleOption[]>([]);
   const [isInsertingDelay, setIsInsertingDelay] = useState(false);
+  const [isRemovingDelay, setIsRemovingDelay] = useState(false);
 
   useEffect(() => {
     getPeople().then(setPeople);
@@ -196,8 +197,25 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   }
 
   async function handleDelete() {
+    if (!existing) return;
+
+    if (existing.isDelay) {
+      setIsRemovingDelay(true);
+      try {
+        await removeDelayBlock(projectId, existing.id);
+        toast.success("Delay removed - schedule shifted back");
+        onSaved();
+        onClose();
+      } catch (error) {
+        console.error("Failed to remove delay:", error);
+        toast.error("Failed to remove delay");
+        setIsRemovingDelay(false);
+      }
+      return;
+    }
+
     try {
-      if (existing) await removeBlock(projectId, existing.id);
+      await removeBlock(projectId, existing.id);
       toast.success("Block deleted");
       onSaved();
       onClose();
@@ -205,6 +223,32 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
       console.error("Failed to delete block:", error);
       toast.error("Failed to delete block");
     }
+  }
+
+  if (existing?.isDelay) {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Delay marker</DialogTitle>
+            <DialogDescription>
+              This is a delay marker on {formatDisplayDate(existing.startDate)}, in the {LANE_LABELS[existing.lane]}{" "}
+              lane. It has no
+              editable fields - deleting it shifts every RJF/Client block and phase on or after this date back by one
+              day, undoing the delay.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="destructive" onClick={handleDelete} disabled={isRemovingDelay}>
+              {isRemovingDelay ? "Removing…" : "Delete"}
+            </Button>
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (

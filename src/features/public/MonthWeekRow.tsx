@@ -207,8 +207,8 @@ function TrackLayer({
           <div
             key={block.id}
             className={cn(
-              "pointer-events-auto absolute flex cursor-pointer flex-col justify-center gap-1 overflow-hidden px-2 py-1",
-              block.isDelay && "items-center gap-0.5 bg-gray-500 text-white",
+              "pointer-events-auto absolute flex flex-col justify-center gap-1 overflow-hidden px-2 py-1",
+              block.isDelay ? "items-center gap-0.5 bg-gray-500 text-white" : "cursor-pointer",
               !segment.continuesBefore && "rounded-l-md",
               !segment.continuesAfter && "rounded-r-md",
             )}
@@ -220,7 +220,7 @@ function TrackLayer({
               backgroundColor: block.isDelay ? undefined : displayColor,
               color: block.isDelay ? undefined : textColor,
             }}
-            onClick={() => setOpenBlockId(block.id)}
+            onClick={block.isDelay ? undefined : () => setOpenBlockId(block.id)}
           >
             {block.isDelay ? (
               <>

@@ -14,6 +14,25 @@ import type {
 } from "./types";
 import { todayIso, shiftRange } from "@/lib/dateUtils";
 
+/**
+ * How a phase bar entry responds to a delay at `date`, in either direction (deltaDays = 1 to insert
+ * a delay, -1 to undo one): a phase that hasn't started yet by `date` pushes wholesale (both start
+ * and end move); a phase already under way at `date` (started before, still running on/after it)
+ * just runs one day longer/shorter - only its end date moves. A phase that finished before `date`
+ * is untouched. Applying this with the same `date` in both directions is symmetric: a pushed entry's
+ * startDate stays >= date, and an expanded entry's startDate stays < date with endDate >= date, so
+ * the same branch is taken on the way back out.
+ */
+function applyDelayToPhaseEntry(entry: PhaseBarEntry, date: string, deltaDays: 1 | -1): PhaseBarEntry {
+  if (entry.startDate >= date) {
+    return { ...entry, ...shiftRange(entry.startDate, entry.endDate, deltaDays) };
+  }
+  if (entry.endDate >= date) {
+    return { ...entry, endDate: shiftRange(entry.endDate, entry.endDate, deltaDays).endDate };
+  }
+  return entry;
+}
+
 async function reconstructProject(projectId: string): Promise<Project | undefined> {
   const { data: projectData } = await supabase
     .from("projects")
@@ -383,9 +402,11 @@ export async function saveProjectVersion(projectId: string, label: string): Prom
 
 /**
  * Inserts a 1-day "delay" block into `lane` (RJF/Client only) at `date`, then shifts every other
- * RJF/Client block and phase bar entry whose startDate is on/after `date` forward by one day.
- * Suppliers/Internal/Leave Tracker are left untouched, as are blocks that already finished before
- * the delay. The pre-delay state is captured as a new ProjectVersion first, so it stays viewable.
+ * RJF/Client block whose startDate is on/after `date` forward by one day. Phase bar entries either
+ * push wholesale (if they hadn't started by `date`) or simply run a day longer (if already under
+ * way at `date`) - see `applyDelayToPhaseEntry`. Suppliers/Internal/Leave Tracker are left
+ * untouched, as are blocks/phases that already finished before the delay. The pre-delay state is
+ * captured as a new ProjectVersion first, so it stays viewable.
  */
 export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT", date: string): Promise<Project | undefined> {
   const project = await getProjectById(projectId);
@@ -412,13 +433,42 @@ export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT"
   const blocksToShift = project.blocks.filter(
     (b) => (b.lane === "RJF" || b.lane === "CLIENT") && b.startDate >= date,
   );
-  const entriesToShift = project.phaseBarEntries.filter((p) => p.startDate >= date);
+  const entriesToShift = project.phaseBarEntries.filter((p) => p.startDate >= date || p.endDate >= date);
 
   // Independent rows - shift them all in parallel instead of one round-trip at a time (this can otherwise take several seconds for a busy schedule).
   await Promise.all([
     ...blocksToShift.map((block) => updateBlock(projectId, { ...block, ...shiftRange(block.startDate, block.endDate, 1) })),
-    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, { ...entry, ...shiftRange(entry.startDate, entry.endDate, 1) })),
+    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, applyDelayToPhaseEntry(entry, date, 1))),
   ]);
+
+  return getProjectById(projectId);
+}
+
+/**
+ * Reverses `insertDelayBlock`: shifts every RJF/Client block (other than the delay marker itself)
+ * and phase bar entry whose startDate is on/after the delay's own date back by one day, then
+ * deletes the delay marker - restoring the schedule to exactly how it looked before the delay was
+ * inserted. No new version snapshot is taken (undoing already returns to a known-good state).
+ */
+export async function removeDelayBlock(projectId: string, blockId: string): Promise<Project | undefined> {
+  const project = await getProjectById(projectId);
+  if (!project) return undefined;
+
+  const delayBlock = project.blocks.find((b) => b.id === blockId && b.isDelay);
+  if (!delayBlock) return project;
+
+  const date = delayBlock.startDate;
+  const blocksToShift = project.blocks.filter(
+    (b) => b.id !== blockId && (b.lane === "RJF" || b.lane === "CLIENT") && b.startDate >= date,
+  );
+  const entriesToShift = project.phaseBarEntries.filter((p) => p.startDate >= date || p.endDate >= date);
+
+  await Promise.all([
+    ...blocksToShift.map((block) => updateBlock(projectId, { ...block, ...shiftRange(block.startDate, block.endDate, -1) })),
+    ...entriesToShift.map((entry) => updatePhaseBarEntry(projectId, applyDelayToPhaseEntry(entry, date, -1))),
+  ]);
+
+  await removeBlock(projectId, blockId);
 
   return getProjectById(projectId);
 }

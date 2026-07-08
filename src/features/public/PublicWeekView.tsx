@@ -125,8 +125,8 @@ function LaneTrack({
             <div
               key={block.id}
               className={cn(
-                "absolute flex cursor-pointer flex-col justify-center gap-0.5 overflow-hidden rounded-md px-2 py-1",
-                block.isDelay && "items-center gap-0 bg-gray-500 text-white",
+                "absolute flex flex-col justify-center gap-0.5 overflow-hidden rounded-md px-2 py-1",
+                block.isDelay ? "items-center gap-0 bg-gray-500 text-white" : "cursor-pointer",
               )}
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
@@ -136,7 +136,7 @@ function LaneTrack({
                 backgroundColor: block.isDelay ? undefined : displayColor,
                 color: block.isDelay ? undefined : textColor,
               }}
-              onClick={() => onOpenBlock(block.id)}
+              onClick={block.isDelay ? undefined : () => onOpenBlock(block.id)}
             >
               {block.isDelay ? (
                 <>
