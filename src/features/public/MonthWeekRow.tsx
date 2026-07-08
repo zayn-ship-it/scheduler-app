@@ -98,9 +98,9 @@ function assignSegmentRows(segments: Segment[]): number[] {
   });
 }
 
-/** The lines actually shown in the compact calendar preview - full detail when the toggle is on, just the block's own free-text info when it's off (deliverables still remain in segment.lines for the drawer). */
+/** The lines actually shown in the compact calendar preview - all of them when the toggle is on, none at all when it's off (the full detail, including deliverables, always remains in segment.lines for the drawer). */
 function compactLines(segment: Segment, showDeliverables: boolean): string[] {
-  return showDeliverables ? segment.lines : segment.block.information;
+  return showDeliverables ? segment.lines : [];
 }
 
 /** How many lines actually render inline on the compact block: the first line, plus one more for "See more" if there's anything hidden behind it. */
@@ -206,7 +206,7 @@ function TrackLayer({
           <div
             key={block.id}
             className={cn(
-              "pointer-events-auto absolute flex cursor-pointer flex-col gap-1 overflow-hidden px-2 py-1",
+              "pointer-events-auto absolute flex cursor-pointer flex-col justify-center gap-1 overflow-hidden px-2 py-1",
               !segment.continuesBefore && "rounded-l-md",
               !segment.continuesAfter && "rounded-r-md",
             )}
@@ -341,10 +341,10 @@ export function MonthWeekRow({
             title={holiday ? `${formatDisplayDate(day)} — ${holiday.name}` : formatDisplayDate(day)}
           >
             <div
-              className="flex items-baseline gap-1 rounded px-1 py-0.5"
+              className="flex items-center gap-1 rounded px-1 py-0.5"
               style={phaseEntry ? { backgroundColor: phaseTitle?.color ?? "#94a3b8" } : undefined}
             >
-              {isToday && <span className="size-1 shrink-0 rounded-full bg-green-500" />}
+              {isToday && <span className="size-2 shrink-0 rounded-full bg-green-500" />}
               <span className={cn("shrink-0 text-xs font-medium", phaseEntry ? "text-white" : "text-muted-foreground")}>
                 {day.slice(8, 10)}
               </span>
