@@ -11,6 +11,11 @@ export function linkDisplayLabel(link: BlockLink): string {
   return link.label || "Open meeting link";
 }
 
+/** Ensures a link URL has a scheme, so `<a href>` always opens it as its own absolute address instead of resolving it as a path relative to the current page (e.g. "figma.com/x" -> "https://figma.com/x"). */
+export function normalizeLinkUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 /** A block's combined information: its own free-text lines, then each attached deliverable as its own line. */
 export function infoLines(block: ScheduleBlock, deliverablesById: Map<string, Deliverable>): string[] {
   const attached = block.deliverableIds

@@ -108,6 +108,8 @@ export interface ScheduleBlock {
    * deliverableIds/color/links - it always renders as a plain grey "Delay" marker.
    */
   isDelay: boolean;
+  /** Optional short reason shown under the "Delay" label on the public/live view (delay blocks only). */
+  delayReason: string | null;
 }
 
 /**

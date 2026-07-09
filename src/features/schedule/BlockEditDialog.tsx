@@ -46,6 +46,7 @@ import {
   type ScheduleBlock,
 } from "@/lib/storage/types";
 import { clampRangeToBounds, formatDisplayDate } from "@/lib/dateUtils";
+import { normalizeLinkUrl } from "./deliverableFormat";
 import { COLOR_PRESETS, RJF_BLOCK_COLOR } from "./colorPresets";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +115,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   // Only a brand-new RJF/Client block can be turned into a delay marker - editing an existing block never offers this.
   const canBeDelay = !existing && (lane === "RJF" || lane === "CLIENT");
   const [isDelayBlock, setIsDelayBlock] = useState(false);
+  const [delayReason, setDelayReason] = useState("");
 
   // The dropdown offers preset titles, but a custom title must always remain possible (e.g. this block's
   // title was set before the preset existed, or this occasion just isn't in the list).
@@ -146,7 +148,7 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
       const clampedDelay = clampRangeToBounds(startDate, startDate, bounds.startDate, bounds.endDate);
       setIsInsertingDelay(true);
       try {
-        await insertDelayBlock(projectId, lane as "RJF" | "CLIENT", clampedDelay.startDate);
+        await insertDelayBlock(projectId, lane as "RJF" | "CLIENT", clampedDelay.startDate, delayReason.trim() || undefined);
         toast.success("Delay inserted - schedule shifted forward by a day, previous state saved as a version");
         onSaved();
         onClose();
@@ -185,9 +187,12 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
       color,
       personId,
       links: showExternalLink
-        ? links.filter((l) => l.url.trim()).map((l) => ({ ...l, label: l.label.trim(), url: l.url.trim() }))
+        ? links
+            .filter((l) => l.url.trim())
+            .map((l) => ({ ...l, label: l.label.trim(), url: normalizeLinkUrl(l.url.trim()) }))
         : [],
       isDelay: existing?.isDelay ?? false,
+      delayReason: existing?.delayReason ?? null,
       ...clamped,
     };
 
@@ -249,6 +254,9 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
               day, undoing the delay.
             </DialogDescription>
           </DialogHeader>
+          {existing.delayReason && (
+            <p className="rounded-md bg-muted/60 p-3 text-sm text-foreground">{existing.delayReason}</p>
+          )}
           <DialogFooter className="gap-2 sm:justify-between">
             <Button variant="destructive" onClick={handleDelete} disabled={isRemovingDelay}>
               {isRemovingDelay ? "Removing…" : "Delete"}
@@ -520,10 +528,21 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
                 </SelectContent>
               </Select>
               {isDelayBlock && (
-                <p className="text-xs text-muted-foreground">
-                  Saving will add a grey delay marker on this date and shift every RJF/Client block and phase on or
-                  after it forward by one day. The current schedule is saved as a version first.
-                </p>
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Saving will add a grey delay marker on this date and shift every RJF/Client block and phase on or
+                    after it forward by one day. The current schedule is saved as a version first.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <Label>Reason (optional)</Label>
+                    <Textarea
+                      value={delayReason}
+                      onChange={(e) => setDelayReason(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Client hasn't paid yet so there is a delay"
+                    />
+                  </div>
+                </>
               )}
             </div>
           )}

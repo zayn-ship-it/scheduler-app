@@ -37,7 +37,7 @@ import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate, fromIsoDate, todayIso } from "@/lib/dateUtils";
 import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
-import { infoLines, linkDisplayLabel } from "@/features/schedule/deliverableFormat";
+import { infoLines, linkDisplayLabel, normalizeLinkUrl } from "@/features/schedule/deliverableFormat";
 import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
@@ -51,6 +51,8 @@ const CONTENT_GAP = 4;
 const TRACK_GAP = 3;
 /** RJF/Client blocks never render shorter than this, even with no information lines. */
 const MIN_BLOCK_HEIGHT = 48;
+/** A delay marker with a reason needs more room to fit its wrapped reason text under the "Delay" label. */
+const DELAY_WITH_REASON_HEIGHT = 72;
 
 interface Segment {
   block: ScheduleBlock;
@@ -182,6 +184,10 @@ function visibleLineCount(lines: string[]): number {
 
 /** How tall a segment needs to be to fit its title line plus its visible info lines, un-truncated. */
 function segmentHeight(segment: Segment, showDeliverables: boolean): number {
+  if (segment.block.isDelay) {
+    // A delay's reason always shows (it isn't a "deliverable"), independent of the showDeliverables toggle.
+    return segment.block.delayReason ? DELAY_WITH_REASON_HEIGHT : MIN_BLOCK_HEIGHT;
+  }
   return Math.max(MIN_BLOCK_HEIGHT, BLOCK_BASE_HEIGHT + visibleLineCount(compactLines(segment, showDeliverables)) * (NOTE_LINE_HEIGHT + CONTENT_GAP));
 }
 
@@ -240,7 +246,7 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
           <div className="flex flex-col gap-2">
             {block.links.map((link) => (
               <Button key={link.id} variant="outline" size="sm" className="justify-start gap-1.5" asChild>
-                <a href={link.url} target="_blank" rel="noopener noreferrer">
+                <a href={normalizeLinkUrl(link.url)} target="_blank" rel="noopener noreferrer">
                   <Icon name="link_2" size={12} />
                   {linkDisplayLabel(link)}
                 </a>
@@ -303,7 +309,12 @@ function TrackLayer({
             {block.isDelay ? (
               <>
                 <Icon name="next_plan" size={18} />
-                <span className="text-[10px] leading-tight text-gray-100">Delay</span>
+                <span className="text-[13px] font-semibold leading-tight text-gray-100">Delay</span>
+                {block.delayReason && (
+                  <span className="px-1 text-center text-[10px] leading-tight text-gray-200">
+                    {block.delayReason}
+                  </span>
+                )}
               </>
             ) : (
               <>
@@ -323,7 +334,7 @@ function TrackLayer({
                   )}
                   {block.links.length > 0 && (
                     <a
-                      href={block.links[0].url}
+                      href={normalizeLinkUrl(block.links[0].url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}

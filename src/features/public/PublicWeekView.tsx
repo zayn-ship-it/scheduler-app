@@ -25,7 +25,7 @@ import { Icon } from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX } from "@/features/schedule/gridConstants";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
-import { infoLines, linkDisplayLabel } from "@/features/schedule/deliverableFormat";
+import { infoLines, linkDisplayLabel, normalizeLinkUrl } from "@/features/schedule/deliverableFormat";
 import { getPhaseTitles } from "@/lib/storage/phaseTitleRepository";
 import { dayIndex, enumerateDays, formatDisplayDate, fromIsoDate, spanLengthDays, todayIso } from "@/lib/dateUtils";
 import type { Deliverable, PhaseTitle, Project, ScheduleBlock } from "@/lib/storage/types";
@@ -33,6 +33,8 @@ import { cn } from "@/lib/utils";
 
 const WEEK_ROW_HEIGHT_PX = 48;
 const PHASE_ROW_HEIGHT_PX = 24;
+/** A delay marker with a reason needs a taller row to fit its wrapped reason text under the "Delay" label. */
+const DELAY_REASON_ROW_HEIGHT_PX = 88;
 
 /** Greedily assigns each block a stacking row index such that no two overlapping blocks share a row (same approach as LaneRow.tsx). */
 function assignRows(blocks: ScheduleBlock[]): Map<string, number> {
@@ -54,11 +56,34 @@ function assignRows(blocks: ScheduleBlock[]): Map<string, number> {
   return assignment;
 }
 
+/** Per-row height for a lane's stacked rows - normally a flat `WEEK_ROW_HEIGHT_PX`, but taller for any row holding a delay-with-reason marker. */
+function rowHeightsFor(blocks: ScheduleBlock[], rowAssignment: Map<string, number>): number[] {
+  const rowCount = Math.max(1, ...Array.from(rowAssignment.values()).map((r) => r + 1));
+  const heights = new Array<number>(rowCount).fill(WEEK_ROW_HEIGHT_PX);
+  for (const block of blocks) {
+    if (block.isDelay && block.delayReason) {
+      const row = rowAssignment.get(block.id) ?? 0;
+      heights[row] = Math.max(heights[row], DELAY_REASON_ROW_HEIGHT_PX);
+    }
+  }
+  return heights;
+}
+
+/** Cumulative top offset for each row, derived from `rowHeightsFor` instead of a flat multiply. */
+function rowTopsFor(rowHeights: number[]): number[] {
+  const tops: number[] = [];
+  let acc = 0;
+  for (const height of rowHeights) {
+    tops.push(acc);
+    acc += height;
+  }
+  return tops;
+}
+
 /** Total pixel height a lane's track needs once overlapping blocks are stacked into extra rows - shared by `LaneTrack` (to size its own container) and `PublicWeekView` (to size the delay-to-phase-end background band). */
 function laneTrackHeight(blocks: ScheduleBlock[]): number {
   const rowAssignment = assignRows(blocks);
-  const rowCount = Math.max(1, ...Array.from(rowAssignment.values()).map((r) => r + 1));
-  return rowCount * WEEK_ROW_HEIGHT_PX;
+  return rowHeightsFor(blocks, rowAssignment).reduce((a, b) => a + b, 0);
 }
 
 function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: string[] }) {
@@ -87,7 +112,7 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
           <div className="flex flex-col gap-2">
             {block.links.map((link) => (
               <Button key={link.id} variant="outline" size="sm" className="justify-start gap-1.5" asChild>
-                <a href={link.url} target="_blank" rel="noopener noreferrer">
+                <a href={normalizeLinkUrl(link.url)} target="_blank" rel="noopener noreferrer">
                   <Icon name="link_2" size={12} />
                   {linkDisplayLabel(link)}
                 </a>
@@ -116,7 +141,9 @@ function LaneTrack({
   onOpenBlock: (id: string) => void;
 }) {
   const rowAssignment = assignRows(blocks);
-  const trackHeight = laneTrackHeight(blocks);
+  const rowHeights = rowHeightsFor(blocks, rowAssignment);
+  const rowTops = rowTopsFor(rowHeights);
+  const trackHeight = rowHeights.reduce((a, b) => a + b, 0);
 
   return (
     <div className="flex border-b">
@@ -146,8 +173,8 @@ function LaneTrack({
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
                 width: blockWidth,
-                top: rowIndex * WEEK_ROW_HEIGHT_PX + 2,
-                height: WEEK_ROW_HEIGHT_PX - 4,
+                top: rowTops[rowIndex] + 2,
+                height: rowHeights[rowIndex] - 4,
                 backgroundColor: block.isDelay ? undefined : displayColor,
                 color: block.isDelay ? undefined : textColor,
               }}
@@ -156,7 +183,12 @@ function LaneTrack({
               {block.isDelay ? (
                 <>
                   <Icon name="next_plan" size={16} />
-                  <span className="text-[9px] leading-tight text-gray-100">Delay</span>
+                  <span className="text-[11px] font-semibold leading-tight text-gray-100">Delay</span>
+                  {block.delayReason && (
+                    <span className="px-1 text-center text-[9px] leading-tight text-gray-200">
+                      {block.delayReason}
+                    </span>
+                  )}
                 </>
               ) : (
                 <>

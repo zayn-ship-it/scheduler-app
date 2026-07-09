@@ -119,6 +119,7 @@ async function reconstructProject(projectId: string): Promise<Project | undefine
       personId: b.person_id,
       links: b.links || [],
       isDelay: b.is_delay ?? false,
+      delayReason: b.delay_reason ?? null,
     })),
     phaseBarEntries: (phaseBarEntries || []).map((p: any) => ({
       id: p.id,
@@ -312,6 +313,7 @@ export async function addBlock(
     person_id: block.personId,
     links: block.links,
     is_delay: block.isDelay,
+    delay_reason: block.delayReason,
   });
 
   if (error) throw error;
@@ -334,6 +336,7 @@ export async function updateBlock(_projectId: string, block: ScheduleBlock): Pro
       person_id: block.personId,
       links: block.links,
       is_delay: block.isDelay,
+      delay_reason: block.delayReason,
     })
     .eq("id", block.id);
 
@@ -432,7 +435,12 @@ export async function saveProjectVersion(projectId: string, label: string): Prom
  * finished before the delay. The pre-delay state is captured as a new ProjectVersion first, so it
  * stays viewable.
  */
-export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT", date: string): Promise<Project | undefined> {
+export async function insertDelayBlock(
+  projectId: string,
+  lane: "RJF" | "CLIENT",
+  date: string,
+  reason?: string,
+): Promise<Project | undefined> {
   const project = await getProjectById(projectId);
   if (!project) return undefined;
 
@@ -451,6 +459,7 @@ export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT"
     personId: null,
     links: [],
     isDelay: true,
+    delayReason: reason?.trim() || null,
   });
 
   const blocksToShift = project.blocks.filter(
