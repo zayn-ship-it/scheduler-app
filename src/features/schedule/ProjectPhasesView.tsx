@@ -16,7 +16,7 @@ import { dayIndex, enumerateDays, formatDisplayDate, fromIsoDate, spanLengthDays
 import type { PhaseBarEntry, PhaseTitle, Project } from "@/lib/storage/types";
 import { cn } from "@/lib/utils";
 
-const ROW_HEIGHT_PX = 32;
+const ROW_HEIGHT_PX = 48;
 
 interface PhaseAssignment {
   project: Project;
