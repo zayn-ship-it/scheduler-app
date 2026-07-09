@@ -59,7 +59,7 @@ function DrawerContent({
         )}
         {...props}
       >
-        <div className="mx-auto mt-3 h-1.5 w-[64px] shrink-0 rounded-full bg-foreground/20" />
+        <div className="mx-auto mt-3 h-1.5 w-[64px] shrink-0 cursor-grab rounded-full bg-foreground/20 active:cursor-grabbing" />
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>

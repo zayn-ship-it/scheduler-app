@@ -102,33 +102,43 @@ function PersonRow({
             block.startDate === block.endDate
               ? formatDisplayDate(block.startDate)
               : `${formatDisplayDate(block.startDate)} – ${formatDisplayDate(block.endDate)}`;
+          const isLeave = block.lane === "LEAVE_TRACKER";
 
           return (
             <div
               key={block.id}
-              className="absolute flex flex-col justify-center gap-0.5 rounded-md py-1"
+              className={cn(
+                "absolute flex flex-col justify-center gap-0.5 rounded-md py-1",
+                isLeave && "items-center border bg-white text-foreground",
+              )}
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
                 width: blockWidth,
                 top: rowIndex * ROW_HEIGHT_PX + 2,
                 height: ROW_HEIGHT_PX - 4,
-                backgroundColor: color,
-                color: textColor,
+                backgroundColor: isLeave ? undefined : color,
+                color: isLeave ? undefined : textColor,
               }}
-              title={`${project.projectName || "Untitled Project"} — ${block.title || "(untitled)"} (${dateRange})`}
+              title={isLeave ? `Leave (${dateRange})` : `${project.projectName || "Untitled Project"} — ${block.title || "(untitled)"} (${dateRange})`}
             >
-              <span
-                className="block self-start truncate px-2 text-left text-[13px] font-medium leading-tight"
-                style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth }}
-              >
-                {project.projectName || "Untitled Project"}
-              </span>
-              <span
-                className="block self-start truncate px-2 text-left text-[11px] leading-tight opacity-90"
-                style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth }}
-              >
-                {block.title || "(untitled)"}
-              </span>
+              {isLeave ? (
+                <span className="truncate px-2 text-[13px] font-medium leading-tight">Leave</span>
+              ) : (
+                <>
+                  <span
+                    className="block self-start truncate px-2 text-left text-[13px] font-medium leading-tight"
+                    style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth }}
+                  >
+                    {project.projectName || "Untitled Project"}
+                  </span>
+                  <span
+                    className="block self-start truncate px-2 text-left text-[11px] leading-tight opacity-90"
+                    style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth }}
+                  >
+                    {block.title || "(untitled)"}
+                  </span>
+                </>
+              )}
             </div>
           );
         })}
