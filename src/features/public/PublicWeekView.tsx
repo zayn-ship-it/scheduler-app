@@ -135,8 +135,8 @@ function LaneTrack({
             <div
               key={block.id}
               className={cn(
-                "absolute flex flex-col justify-center gap-0.5 rounded-md px-2 py-1",
-                block.isDelay ? "items-center gap-0 overflow-hidden bg-gray-500 text-white" : "cursor-pointer",
+                "absolute flex flex-col justify-center gap-0.5 rounded-md py-1",
+                block.isDelay ? "items-center gap-0 overflow-hidden bg-gray-500 px-2 text-white" : "cursor-pointer",
               )}
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
@@ -158,16 +158,16 @@ function LaneTrack({
                   {/* No overflow-hidden on the block itself - see the matching comment on the phase-row bar above for why. */}
                   {/* self-start opts out of the flex column's default stretch - a stretched sticky child doesn't reposition correctly in some browsers. */}
                   <span
-                    className="block self-start truncate text-left text-[13px] font-medium leading-tight"
-                    style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth - 16 }}
+                    className="block self-start truncate px-2 text-left text-[13px] font-medium leading-tight"
+                    style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth }}
                   >
                     {block.title || "(untitled)"}
                   </span>
                   {lines.length > 0 && (
                     <button
                       type="button"
-                      className="block w-fit self-start truncate text-left text-[11px] leading-tight opacity-90 hover:opacity-100"
-                      style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth - 16 }}
+                      className="block w-fit self-start truncate px-2 text-left text-[11px] leading-tight opacity-90 hover:opacity-100"
+                      style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth }}
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenBlock(block.id);
