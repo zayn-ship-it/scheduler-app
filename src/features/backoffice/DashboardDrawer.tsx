@@ -50,7 +50,7 @@ export function DashboardDrawer({ open, onOpenChange }: { open: boolean; onOpenC
             <DrawerTitle className="sr-only">Dashboard</DrawerTitle>
             <TabsList>
               <TabsTrigger value="workload">Workload</TabsTrigger>
-              <TabsTrigger value="phases">Phases</TabsTrigger>
+              <TabsTrigger value="phases">Projects</TabsTrigger>
             </TabsList>
           </DrawerHeader>
           <TabsContent value="workload" className="min-h-0 flex-1 overflow-hidden px-4 pb-4">
