@@ -78,7 +78,14 @@ function ProjectRow({
       >
         <span className="truncate text-xs font-semibold">{project.projectName || "Untitled Project"}</span>
       </div>
-      <div className="relative" style={{ width: days.length * DAY_COLUMN_WIDTH_PX, height: totalHeight }}>
+      <div
+        className="relative"
+        style={{
+          width: days.length * DAY_COLUMN_WIDTH_PX,
+          height: totalHeight,
+          opacity: project.status === "bidding" ? 0.25 : 1,
+        }}
+      >
         {phaseAssignments.map(({ entry }) => {
           const startIdx = Math.max(dayIndex(days, entry.startDate), 0);
           const span = spanLengthDays(entry.startDate, entry.endDate);
@@ -163,6 +170,7 @@ export function ProjectPhasesView({
   const phaseAssignmentsByProject = useMemo(() => {
     const map = new Map<string, PhaseAssignment[]>();
     for (const project of projects) {
+      if (project.status === "closed") continue;
       if (project.phaseBarEntries.length === 0) continue;
       map.set(
         project.id,
@@ -175,6 +183,7 @@ export function ProjectPhasesView({
   const clientBlocksByProject = useMemo(() => {
     const map = new Map<string, ScheduleBlock[]>();
     for (const project of projects) {
+      if (project.status === "closed") continue;
       const blocks = project.blocks.filter((b) => b.lane === "CLIENT" && !b.isDelay);
       if (blocks.length === 0) continue;
       map.set(project.id, blocks);

@@ -64,6 +64,7 @@ interface HeaderFields {
   client: string;
   date: string;
   scheduleVersion: string;
+  status: Project["status"];
   projectName: string;
   brand: string;
   projectManager: string;
@@ -79,6 +80,7 @@ function emptyHeaderFields(): HeaderFields {
     client: "",
     date: todayIso(),
     scheduleVersion: "1",
+    status: "won",
     projectName: "",
     brand: "",
     projectManager: "",
@@ -112,6 +114,7 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
               client: found.client,
               date: found.date,
               scheduleVersion: found.scheduleVersion,
+              status: found.status,
               projectName: found.projectName,
               brand: found.brand,
               projectManager: found.projectManager,
@@ -256,6 +259,7 @@ export function ProjectFormPage({ mode }: { mode: "create" | "edit" }) {
             <PersonSelectField label="Producer" value={fields.producer} onChange={(v) => updateField("producer", v)} />
             <Field label="Schedule Version" value={fields.scheduleVersion} onChange={() => {}} disabled />
             <Field label="Date" type="date" value={fields.date} onChange={(v) => updateField("date", v)} />
+            <StatusSelectField value={fields.status} onChange={(v) => updateField("status", v)} />
           </div>
 
           <Separator />
@@ -526,6 +530,30 @@ function PersonSelectField({ label, value, onChange }: { label: string; value: s
               {name}
             </SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function StatusSelectField({
+  value,
+  onChange,
+}: {
+  value: Project["status"];
+  onChange: (value: Project["status"]) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>Status</Label>
+      <Select value={value} onValueChange={(v) => onChange(v as Project["status"])}>
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="won">Won</SelectItem>
+          <SelectItem value="bidding">Bidding</SelectItem>
+          <SelectItem value="closed">Closed</SelectItem>
         </SelectContent>
       </Select>
     </div>

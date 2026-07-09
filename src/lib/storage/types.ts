@@ -149,6 +149,7 @@ export interface Project {
   /** The header "Date" field from the original document (document issue date, not the schedule range). */
   date: string;
   scheduleVersion: string;
+  status: "won" | "bidding" | "closed";
   projectName: string;
   brand: string;
   projectManager: string;

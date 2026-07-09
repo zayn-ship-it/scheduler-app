@@ -12,11 +12,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getProjects, deleteProject } from "@/lib/storage/projectRepository";
 import type { Project } from "@/lib/storage/types";
 import { formatDisplayDate } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { DashboardDrawer } from "./DashboardDrawer";
+
+const STATUS_ICON: Record<Project["status"], string> = {
+  won: "check_circle",
+  bidding: "clock_loader_10",
+  closed: "do_not_disturb",
+};
+
+const STATUS_LABEL: Record<Project["status"], string> = {
+  won: "Won",
+  bidding: "Bidding",
+  closed: "Closed",
+};
 
 export function ProjectListPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -107,7 +120,15 @@ export function ProjectListPage() {
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base">{project.projectName || "Untitled Project"}</CardTitle>
-                  {project.projectCode && <Badge variant="secondary">{project.projectCode}</Badge>}
+                  <div className="flex items-center gap-1.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Icon name={STATUS_ICON[project.status]} size={18} className="text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>{STATUS_LABEL[project.status]}</TooltipContent>
+                    </Tooltip>
+                    {project.projectCode && <Badge variant="secondary">{project.projectCode}</Badge>}
+                  </div>
                 </div>
                 <CardDescription>{project.client || "No client set"}</CardDescription>
               </CardHeader>

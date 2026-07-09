@@ -120,6 +120,7 @@ function PersonRow({
                 height: ROW_HEIGHT_PX - 4,
                 backgroundColor: isLeave ? undefined : color,
                 color: isLeave ? undefined : textColor,
+                opacity: project.status === "bidding" ? 0.25 : 1,
               }}
               title={isLeave ? `Leave (${dateRange})` : `${project.projectName || "Untitled Project"} — ${block.title || "(untitled)"} (${dateRange})`}
             >
@@ -165,6 +166,7 @@ export function PeopleWorkloadView({
   const assignmentsByPerson = useMemo(() => {
     const map = new Map<string, Assignment[]>();
     for (const project of projects) {
+      if (project.status === "closed") continue;
       for (const block of project.blocks) {
         if (block.isDelay || !block.personId) continue;
         const list = map.get(block.personId) ?? [];
@@ -178,7 +180,7 @@ export function PeopleWorkloadView({
   // Only people with at least one assignment, in the same order getPeople() already returns (alphabetical).
   const assignedPeople = people.filter((person) => (assignmentsByPerson.get(person.id) ?? []).length > 0);
 
-  // The day range spans every assignment's dates, widened if necessary so today always falls inside it.
+  // The day range spans every assignment's dates (closed projects already excluded from assignmentsByPerson), widened if necessary so today always falls inside it.
   const days = useMemo(() => {
     const today = todayIso();
     let min = today;
