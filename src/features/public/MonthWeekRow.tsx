@@ -40,6 +40,8 @@ import { infoLines } from "@/features/schedule/deliverableFormat";
 import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
+/** Height of the phase strip sitting just below the date-number row. */
+const PHASE_STRIP_HEIGHT = 20;
 /** Minimum height for a block with no notes - just the title/badge line. */
 const BLOCK_BASE_HEIGHT = 28;
 const NOTE_LINE_HEIGHT = 16;
@@ -82,6 +84,79 @@ function buildSegments(blocks: ScheduleBlock[], days: string[], deliverablesById
     });
   }
   return segments;
+}
+
+interface PhaseSegment {
+  entry: PhaseBarEntry;
+  colStart: number;
+  colSpan: number;
+  continuesBefore: boolean;
+  continuesAfter: boolean;
+}
+
+/** Clips phase bar entries to this row, same recipe as `buildSegments` uses for blocks - one segment per row a phase touches, so a phase spanning multiple weeks naturally produces one bar per week-row. */
+function buildPhaseSegments(phaseEntries: PhaseBarEntry[], days: string[]): PhaseSegment[] {
+  const segments: PhaseSegment[] = [];
+  for (const entry of phaseEntries) {
+    const clipped = clipRangeToRow(entry.startDate, entry.endDate, days[0], days[days.length - 1]);
+    if (!clipped) continue;
+    const colStart = days.indexOf(clipped.start);
+    const colEnd = days.indexOf(clipped.end);
+    segments.push({
+      entry,
+      colStart,
+      colSpan: colEnd - colStart + 1,
+      continuesBefore: clipped.continuesBefore,
+      continuesAfter: clipped.continuesAfter,
+    });
+  }
+  return segments;
+}
+
+/** The below-the-date-number phase strip: one left-aligned, labelled bar per phase segment in this row - the title only ever appears once per row, at the segment's left edge (a phase that wraps into the next row gets a fresh segment there with its own label). */
+function PhaseStripLayer({
+  segments,
+  phaseTitlesById,
+  dayCount,
+}: {
+  segments: PhaseSegment[];
+  phaseTitlesById: Map<string, PhaseTitle>;
+  dayCount: number;
+}) {
+  return (
+    <div className="absolute inset-x-0 top-0" style={{ height: PHASE_STRIP_HEIGHT }}>
+      {segments.map((segment) => {
+        const title = phaseTitlesById.get(segment.entry.phaseTitleId);
+        const leftInset = segment.continuesBefore ? 0 : 4;
+        const rightInset = segment.continuesAfter ? 0 : 4;
+        return (
+          <Tooltip key={segment.entry.id}>
+            <TooltipTrigger asChild>
+              <div
+                className={cn(
+                  "pointer-events-auto absolute flex items-center overflow-hidden px-2 text-[11px] font-medium text-foreground",
+                  !segment.continuesBefore && "rounded-l-md",
+                  !segment.continuesAfter && "rounded-r-md",
+                )}
+                style={{
+                  left: `calc(${(segment.colStart / dayCount) * 100}% + ${leftInset}px)`,
+                  width: `calc(${(segment.colSpan / dayCount) * 100}% - ${leftInset + rightInset}px)`,
+                  height: PHASE_STRIP_HEIGHT,
+                  backgroundColor: title?.color ?? "#94a3b8",
+                }}
+              >
+                <span className="truncate">{title?.label ?? "Unknown phase"}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {formatDisplayDate(segment.entry.startDate)} – {formatDisplayDate(segment.entry.endDate)} —{" "}
+              {title?.label ?? "Unknown phase"}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
 }
 
 /** Greedy interval stacking so overlapping segments in the same track get their own row instead of overlapping visually. */
@@ -304,11 +379,6 @@ interface MonthWeekRowProps {
   showDeliverables: boolean;
 }
 
-/** The phase (if any) covering a given day, used to render the coloured date pill. */
-function phaseForDay(phaseEntries: PhaseBarEntry[], day: string): PhaseBarEntry | undefined {
-  return phaseEntries.find((p) => day >= p.startDate && day <= p.endDate);
-}
-
 export function MonthWeekRow({
   days,
   monthAnchor,
@@ -324,11 +394,12 @@ export function MonthWeekRow({
   const deliverablesById = new Map(deliverables.map((d) => [d.id, d]));
   const rjfSegments = buildSegments(rjfBlocks, days, deliverablesById);
   const clientSegments = buildSegments(clientBlocks, days, deliverablesById);
+  const phaseSegments = buildPhaseSegments(phaseEntries, days);
 
   const rjfLayout = layoutSegments(rjfSegments, showDeliverables);
   const clientLayout = layoutSegments(clientSegments, showDeliverables);
 
-  const rjfTop = DAY_NUMBER_HEIGHT + 2;
+  const rjfTop = DAY_NUMBER_HEIGHT + 2 + PHASE_STRIP_HEIGHT + TRACK_GAP;
   const clientTop = rjfTop + rjfLayout.totalHeight + TRACK_GAP;
   const rowContentHeight = clientTop + clientLayout.totalHeight + 8;
 
@@ -340,8 +411,6 @@ export function MonthWeekRow({
         const isToday = day === todayIso();
         const dayOfWeek = fromIsoDate(day).getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-        const phaseEntry = phaseForDay(phaseEntries, day);
-        const phaseTitle = phaseEntry ? phaseTitlesById.get(phaseEntry.phaseTitleId) : undefined;
         return (
           <div
             key={day}
@@ -355,32 +424,18 @@ export function MonthWeekRow({
             style={{ minHeight: rowContentHeight }}
             title={holiday ? `${formatDisplayDate(day)} — ${holiday.name}` : formatDisplayDate(day)}
           >
-            <div
-              className="flex min-w-0 items-center gap-1 rounded px-1 py-0.5"
-              style={phaseEntry ? { backgroundColor: phaseTitle?.color ?? "#94a3b8" } : undefined}
-            >
+            <div className="flex min-w-0 items-center gap-1 px-1 py-0.5">
               {isToday && <span className="size-2 shrink-0 rounded-full bg-red-500" />}
-              <span className={cn("shrink-0 text-xs font-medium", phaseEntry ? "text-foreground" : "text-muted-foreground")}>
-                {day.slice(8, 10)}
-              </span>
-              {phaseEntry && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="min-w-0 truncate text-[11px] font-medium text-foreground">
-                      {phaseTitle?.label ?? "Unknown phase"}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {formatDisplayDate(day)} — {phaseTitle?.label ?? "Unknown phase"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">{day.slice(8, 10)}</span>
             </div>
           </div>
         );
       })}
 
       <div className="pointer-events-none absolute inset-x-0 top-0">
+        <div className="absolute inset-x-0" style={{ top: DAY_NUMBER_HEIGHT + 2 }}>
+          <PhaseStripLayer segments={phaseSegments} phaseTitlesById={phaseTitlesById} dayCount={days.length} />
+        </div>
         <TrackLayer segments={rjfSegments} trackTop={rjfTop} dayCount={days.length} showDeliverables={showDeliverables} />
         <TrackLayer segments={clientSegments} trackTop={clientTop} dayCount={days.length} showDeliverables={showDeliverables} />
       </div>

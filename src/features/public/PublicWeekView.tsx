@@ -129,17 +129,18 @@ function LaneTrack({
           const textColor = getContrastTextColor(displayColor);
           const lines = showDeliverables ? infoLines(block, deliverablesById) : [];
           const rowIndex = rowAssignment.get(block.id) ?? 0;
+          const blockWidth = span * DAY_COLUMN_WIDTH_PX - 4;
 
           return (
             <div
               key={block.id}
               className={cn(
-                "absolute flex flex-col justify-center gap-0.5 overflow-hidden rounded-md px-2 py-1",
-                block.isDelay ? "items-center gap-0 bg-gray-500 text-white" : "cursor-pointer",
+                "absolute flex flex-col justify-center gap-0.5 rounded-md px-2 py-1",
+                block.isDelay ? "items-center gap-0 overflow-hidden bg-gray-500 text-white" : "cursor-pointer",
               )}
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
-                width: span * DAY_COLUMN_WIDTH_PX - 4,
+                width: blockWidth,
                 top: rowIndex * WEEK_ROW_HEIGHT_PX + 2,
                 height: WEEK_ROW_HEIGHT_PX - 4,
                 backgroundColor: block.isDelay ? undefined : displayColor,
@@ -154,7 +155,12 @@ function LaneTrack({
                 </>
               ) : (
                 <>
-                  <span className="truncate text-left text-[13px] font-medium leading-tight">
+                  {/* No overflow-hidden on the block itself - see the matching comment on the phase-row bar above for why. */}
+                  {/* self-start opts out of the flex column's default stretch - a stretched sticky child doesn't reposition correctly in some browsers. */}
+                  <span
+                    className="block self-start truncate text-left text-[13px] font-medium leading-tight"
+                    style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth - 16 }}
+                  >
                     {block.title || "(untitled)"}
                   </span>
                   {lines.length > 0 && (
@@ -306,19 +312,26 @@ export function PublicWeekView({
                 const clampedEnd = endIdx === -1 ? days.length - 1 : endIdx;
                 if (clampedEnd < startIdx) return null;
                 const title = phaseTitlesById.get(entry.phaseTitleId);
+                const barWidth = (clampedEnd - startIdx + 1) * DAY_COLUMN_WIDTH_PX - 4;
                 return (
                   <div
                     key={entry.id}
-                    className="absolute top-0 flex items-center justify-center truncate rounded px-2 text-[11px] font-medium text-foreground"
+                    className="absolute top-0 flex items-center rounded text-[11px] font-medium text-foreground"
                     style={{
                       left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
-                      width: (clampedEnd - startIdx + 1) * DAY_COLUMN_WIDTH_PX - 4,
+                      width: barWidth,
                       height: PHASE_ROW_HEIGHT_PX,
                       backgroundColor: title?.color ?? "#94a3b8",
                     }}
                     title={title?.label ?? "Unknown phase"}
                   >
-                    {title?.label ?? "Unknown phase"}
+                    {/* No overflow-hidden on the bar itself - an ancestor with non-visible overflow is treated as this span's sticky scroll container, which would break the "stick to the actual horizontally-scrolling viewport" behavior. Truncation is done via an explicit max-width here instead. */}
+                    <span
+                      className="truncate px-2"
+                      style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: barWidth }}
+                    >
+                      {title?.label ?? "Unknown phase"}
+                    </span>
                   </div>
                 );
               })}
