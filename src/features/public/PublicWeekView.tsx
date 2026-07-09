@@ -80,12 +80,6 @@ function rowTopsFor(rowHeights: number[]): number[] {
   return tops;
 }
 
-/** Total pixel height a lane's track needs once overlapping blocks are stacked into extra rows - shared by `LaneTrack` (to size its own container) and `PublicWeekView` (to size the delay-to-phase-end background band). */
-function laneTrackHeight(blocks: ScheduleBlock[]): number {
-  const rowAssignment = assignRows(blocks);
-  return rowHeightsFor(blocks, rowAssignment).reduce((a, b) => a + b, 0);
-}
-
 function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: string[] }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -247,23 +241,6 @@ export function PublicWeekView({
   const openBlock = openBlockId ? allBlocksById.get(openBlockId) : undefined;
   const openLines = openBlock ? infoLines(openBlock, deliverablesById) : [];
 
-  // A grey background band from the delay marker's date through to the end of the phase it interrupted,
-  // spanning behind the phase row and both lanes - a visual cue for "everything here got pushed back".
-  const delayBand = useMemo(() => {
-    const delayBlock = project.blocks.find((b) => b.isDelay);
-    if (!delayBlock) return null;
-    const phase = project.phaseBarEntries.find(
-      (p) => delayBlock.startDate >= p.startDate && delayBlock.startDate <= p.endDate,
-    );
-    if (!phase) return null;
-    const startIdx = Math.max(dayIndex(days, delayBlock.startDate), 0);
-    const endIdxRaw = dayIndex(days, phase.endDate);
-    const endIdx = endIdxRaw === -1 ? days.length - 1 : endIdxRaw;
-    if (endIdx < startIdx) return null;
-    return { startIdx, endIdx };
-  }, [project.blocks, project.phaseBarEntries, days]);
-  const delayBandHeight = PHASE_ROW_HEIGHT_PX + laneTrackHeight(rjfBlocks) + laneTrackHeight(clientBlocks);
-
   // Default scroll position: today's column near the left edge, clamped into the project's own range.
   useEffect(() => {
     if (days.length === 0 || !scrollRef.current) return;
@@ -324,17 +301,6 @@ export function PublicWeekView({
         </div>
 
         <div className="relative">
-          {delayBand && (
-            <div
-              className="pointer-events-none absolute top-0 z-0 bg-gray-400/25"
-              style={{
-                left: LANE_LABEL_WIDTH_PX + delayBand.startIdx * DAY_COLUMN_WIDTH_PX,
-                width: (delayBand.endIdx - delayBand.startIdx + 1) * DAY_COLUMN_WIDTH_PX,
-                height: delayBandHeight,
-              }}
-            />
-          )}
-
           {/* Phase row */}
           <div className="relative flex border-b">
             <div
