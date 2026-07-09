@@ -138,7 +138,7 @@ export function ScheduleBlock({
             className="absolute left-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onLeftHandlePointerDown}
           >
-            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-[#29160F]/40" : "bg-white/70")} />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-black/40" : "bg-white/70")} />
           </div>
         )}
 
@@ -176,7 +176,7 @@ export function ScheduleBlock({
             className="absolute right-0 top-0 h-full w-2 cursor-ew-resize opacity-0 group-hover:opacity-100"
             onPointerDown={onRightHandlePointerDown}
           >
-            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-[#29160F]/40" : "bg-white/70")} />
+            <div className={cn("mx-auto h-full w-0.5", isNeutralLane ? "bg-foreground/40" : isDarkText ? "bg-black/40" : "bg-white/70")} />
           </div>
         )}
       </div>

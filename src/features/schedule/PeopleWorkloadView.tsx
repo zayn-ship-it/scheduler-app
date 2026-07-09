@@ -109,7 +109,8 @@ function PersonRow({
               key={block.id}
               className={cn(
                 "absolute flex flex-col justify-center gap-0.5 rounded-md py-1",
-                isLeave && "items-center border bg-white text-foreground",
+                isLeave &&
+                  "items-center bg-[repeating-linear-gradient(45deg,theme(colors.muted.DEFAULT),theme(colors.muted.DEFAULT)_6px,transparent_6px,transparent_12px)] text-foreground",
               )}
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,

@@ -12,8 +12,8 @@ export interface ColorPreset {
   value: string;
 }
 
-/** The brand's near-black - RJF blocks always render in this colour, with no other colour choice offered. */
-export const RJF_BLOCK_COLOR = "#29160F";
+/** RJF blocks always render in this colour (true black), with no other colour choice offered. */
+export const RJF_BLOCK_COLOR = "#000000";
 
 export const COLOR_PRESETS: ColorPreset[] = [
   { name: "Slate", value: "#475569" },
