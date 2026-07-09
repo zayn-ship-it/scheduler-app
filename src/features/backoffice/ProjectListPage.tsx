@@ -68,9 +68,19 @@ export function ProjectListPage() {
         </Button>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="cursor-pointer transition-colors hover:bg-accent/50" onClick={() => setDashboardOpen(true)}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Icon name="dashboard" size={18} />
+              Dashboard
+            </CardTitle>
+            <CardDescription>Cross-project workload overview</CardDescription>
+          </CardHeader>
+        </Card>
+
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
               <CardHeader>
                 <Skeleton className="h-5 w-2/3" />
@@ -84,17 +94,15 @@ export function ProjectListPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      ) : projects.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            No projects yet. Click "New Project" to set up your first schedule.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
+          ))
+        ) : projects.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              No projects yet. Click "New Project" to set up your first schedule.
+            </CardContent>
+          </Card>
+        ) : (
+          projects.map((project) => (
             <Card key={project.id}>
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
@@ -126,15 +134,8 @@ export function ProjectListPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
-
-      <div className="flex justify-center">
-        <Button variant="outline" onClick={() => setDashboardOpen(true)}>
-          <Icon name="dashboard" size={16} />
-          Dashboard
-        </Button>
+          ))
+        )}
       </div>
 
       <DashboardDrawer open={dashboardOpen} onOpenChange={setDashboardOpen} />
