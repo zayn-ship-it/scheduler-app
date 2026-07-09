@@ -166,7 +166,8 @@ function LaneTrack({
                   {lines.length > 0 && (
                     <button
                       type="button"
-                      className="w-fit truncate text-left text-[11px] leading-tight opacity-90 hover:opacity-100"
+                      className="block w-fit self-start truncate text-left text-[11px] leading-tight opacity-90 hover:opacity-100"
+                      style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth - 16 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenBlock(block.id);
