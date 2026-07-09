@@ -21,6 +21,7 @@ export async function getPeople(): Promise<Person[]> {
     id: p.id,
     name: p.name,
     role: p.role,
+    color: p.color ?? null,
   }));
 }
 
@@ -36,7 +37,7 @@ export async function getPersonById(id: string): Promise<Person | undefined> {
     return undefined;
   }
 
-  return data ? { id: data.id, name: data.name, role: data.role } : undefined;
+  return data ? { id: data.id, name: data.name, role: data.role, color: data.color ?? null } : undefined;
 }
 
 export async function addPerson(input: Omit<Person, "id">): Promise<Person> {
@@ -45,6 +46,7 @@ export async function addPerson(input: Omit<Person, "id">): Promise<Person> {
     id,
     name: input.name,
     role: input.role,
+    color: input.color,
   });
 
   if (error) throw error;
@@ -57,6 +59,7 @@ export async function updatePerson(updated: Person): Promise<void> {
     .update({
       name: updated.name,
       role: updated.role,
+      color: updated.color,
     })
     .eq("id", updated.id);
 

@@ -52,6 +52,11 @@ export const PHASE_COLOR_PRESETS: ColorPreset[] = [
   { name: "Grey", value: "#9ca3af" },
 ];
 
+/** A distinct-enough fallback color for a person who hasn't picked one yet, based on their position in the (alphabetical) people list - cycles through the same palette Phase Titles use. */
+export function defaultPersonColor(index: number): string {
+  return PHASE_COLOR_PRESETS[index % PHASE_COLOR_PRESETS.length].value;
+}
+
 /**
  * Picks black or white text for a given background hex colour based on
  * WCAG relative luminance, so light backgrounds (e.g. the lighter grey

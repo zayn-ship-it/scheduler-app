@@ -85,10 +85,11 @@ function PeopleSection() {
     if (!name.trim()) return;
     try {
       if (editingId) {
-        await updatePerson({ id: editingId, name: name.trim(), role: role.trim() });
+        const existingColor = people.find((p) => p.id === editingId)?.color ?? null;
+        await updatePerson({ id: editingId, name: name.trim(), role: role.trim(), color: existingColor });
         toast.success("Person updated");
       } else {
-        await addPerson({ name: name.trim(), role: role.trim() });
+        await addPerson({ name: name.trim(), role: role.trim(), color: null });
         toast.success("Person added");
       }
       setPeople(await getPeople());

@@ -16,10 +16,12 @@ import { getProjects, deleteProject } from "@/lib/storage/projectRepository";
 import type { Project } from "@/lib/storage/types";
 import { formatDisplayDate } from "@/lib/dateUtils";
 import { toast } from "sonner";
+import { DashboardDrawer } from "./DashboardDrawer";
 
 export function ProjectListPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
 
   // Re-read from storage on mount (and whenever we come back to this page via navigation).
   useEffect(() => {
@@ -127,6 +129,15 @@ export function ProjectListPage() {
           ))}
         </div>
       )}
+
+      <div className="flex justify-center">
+        <Button variant="outline" onClick={() => setDashboardOpen(true)}>
+          <Icon name="dashboard" size={16} />
+          Dashboard
+        </Button>
+      </div>
+
+      <DashboardDrawer open={dashboardOpen} onOpenChange={setDashboardOpen} />
     </div>
   );
 }

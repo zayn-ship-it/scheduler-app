@@ -50,6 +50,8 @@ export interface Person {
   id: string;
   name: string;
   role: string;
+  /** Swatch color for this person's blocks in the cross-project workload dashboard - null until manually set. */
+  color: string | null;
 }
 
 /** A named, colour-locked phase title in the global master list (managed in Settings). */
