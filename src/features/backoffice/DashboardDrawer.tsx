@@ -2,32 +2,38 @@
  * DashboardDrawer.tsx
  * ---------------------------------------------------------------------------
  * The near-fullscreen Drawer opened from the "Dashboard" button on the
- * Projects list page. Two tabs planned - only "Workload" is built for now,
- * the second is a placeholder for later.
+ * Projects list page. Two tabs: "Workload" (who's working on what, across
+ * every project) and "Phases" (where every project sits in its own phase
+ * timeline).
  *
- * Fetches its own data (every project + every person) only while open, so
- * the Projects page itself doesn't pay for this on every load.
+ * Fetches its own data (every project + every person + every phase title)
+ * only while open, so the Projects page itself doesn't pay for this on
+ * every load.
  */
 import { useEffect, useState } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getProjects } from "@/lib/storage/projectRepository";
 import { getPeople } from "@/lib/storage/peopleRepository";
-import type { Person, Project } from "@/lib/storage/types";
+import { getPhaseTitles } from "@/lib/storage/phaseTitleRepository";
+import type { PhaseTitle, Person, Project } from "@/lib/storage/types";
 import { PeopleWorkloadView } from "@/features/schedule/PeopleWorkloadView";
+import { ProjectPhasesView } from "@/features/schedule/ProjectPhasesView";
 
 export function DashboardDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
+  const [phaseTitles, setPhaseTitles] = useState<PhaseTitle[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    Promise.all([getProjects(), getPeople()])
-      .then(([projectsResult, peopleResult]) => {
+    Promise.all([getProjects(), getPeople(), getPhaseTitles()])
+      .then(([projectsResult, peopleResult, phaseTitlesResult]) => {
         setProjects(projectsResult);
         setPeople(peopleResult);
+        setPhaseTitles(phaseTitlesResult);
       })
       .finally(() => setLoading(false));
   }, [open]);
@@ -44,7 +50,7 @@ export function DashboardDrawer({ open, onOpenChange }: { open: boolean; onOpenC
             <DrawerTitle className="sr-only">Dashboard</DrawerTitle>
             <TabsList>
               <TabsTrigger value="workload">Workload</TabsTrigger>
-              <TabsTrigger value="coming-soon">Coming soon</TabsTrigger>
+              <TabsTrigger value="phases">Phases</TabsTrigger>
             </TabsList>
           </DrawerHeader>
           <TabsContent value="workload" className="min-h-0 flex-1 overflow-hidden px-4 pb-4">
@@ -52,8 +58,8 @@ export function DashboardDrawer({ open, onOpenChange }: { open: boolean; onOpenC
               <PeopleWorkloadView projects={projects} people={people} onPersonColorChanged={refreshPeople} />
             )}
           </TabsContent>
-          <TabsContent value="coming-soon" className="min-h-0 flex-1">
-            <p className="p-6 text-center text-sm text-muted-foreground">More views coming soon.</p>
+          <TabsContent value="phases" className="min-h-0 flex-1 overflow-hidden px-4 pb-4">
+            {!loading && <ProjectPhasesView projects={projects} phaseTitles={phaseTitles} />}
           </TabsContent>
         </Tabs>
       </DrawerContent>
