@@ -68,6 +68,13 @@ export interface LaneTitleOption {
   label: string;
 }
 
+/** A single external link attached to a block - `label` falls back to "Open meeting link" when empty. */
+export interface BlockLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
 /**
  * A single draggable/resizable content block placed on the schedule grid.
  * Occupies one lane, on one or more consecutive days (startDate..endDate inclusive).
@@ -91,10 +98,8 @@ export interface ScheduleBlock {
   color: string;
   /** Optional link to a Person - mainly used for Leave Tracker entries. */
   personId: string | null;
-  /** Optional external URL (RJF/Client lane blocks only) - shown as a link on the public/live view too. */
-  externalLink: string | null;
-  /** Optional custom label for externalLink, e.g. "Zoom Call" - falls back to "Open meeting link" when unset. */
-  linkLabel: string | null;
+  /** External links (RJF/Client lane blocks only) - shown as buttons on the public/live view too. */
+  links: BlockLink[];
   /**
    * Marks this as a special 1-day "delay" block (RJF/Client lanes only) rather than a normal
    * content block - inserting one shifts every other RJF/Client block/phase on or after its date

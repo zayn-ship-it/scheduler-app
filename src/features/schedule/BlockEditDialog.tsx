@@ -38,6 +38,7 @@ import { getLaneTitleOptions } from "@/lib/storage/laneTitleOptionRepository";
 import {
   LANE_LABELS,
   LANE_ORDER,
+  type BlockLink,
   type Deliverable,
   type Lane,
   type LaneTitleOption,
@@ -92,8 +93,17 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
   const [deliverableIds, setDeliverableIds] = useState<string[]>(existing?.deliverableIds ?? []);
   const [color, setColor] = useState(block.lane === "RJF" ? RJF_BLOCK_COLOR : existing?.color ?? COLOR_PRESETS[6].value);
   const [personId, setPersonId] = useState<string | null>(existing?.personId ?? null);
-  const [externalLink, setExternalLink] = useState(existing?.externalLink ?? "");
-  const [linkLabel, setLinkLabel] = useState(existing?.linkLabel ?? "");
+  const [links, setLinks] = useState<BlockLink[]>(existing?.links ?? []);
+
+  function addLink() {
+    setLinks((prev) => [...prev, { id: crypto.randomUUID(), label: "", url: "" }]);
+  }
+  function updateLink(id: string, patch: Partial<BlockLink>) {
+    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  }
+  function removeLink(id: string) {
+    setLinks((prev) => prev.filter((l) => l.id !== id));
+  }
 
   const showColorPicker = lane === "CLIENT";
   const showExternalLink = lane === "RJF" || lane === "CLIENT";
@@ -174,8 +184,9 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
       deliverableIds,
       color,
       personId,
-      externalLink: showExternalLink ? externalLink.trim() || null : null,
-      linkLabel: showExternalLink ? linkLabel.trim() || null : null,
+      links: showExternalLink
+        ? links.filter((l) => l.url.trim()).map((l) => ({ ...l, label: l.label.trim(), url: l.url.trim() }))
+        : [],
       isDelay: existing?.isDelay ?? false,
       ...clamped,
     };
@@ -442,24 +453,36 @@ export function BlockEditDialog({ projectId, block, bounds, deliverables, onClos
           )}
 
           {!isDelayBlock && showExternalLink && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <Label>Link title (optional)</Label>
-                <Input
-                  value={linkLabel}
-                  onChange={(e) => setLinkLabel(e.target.value)}
-                  placeholder="e.g. Zoom Call"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Link URL (optional, shown on the live link)</Label>
-                <Input
-                  type="url"
-                  value={externalLink}
-                  onChange={(e) => setExternalLink(e.target.value)}
-                  placeholder="https://..."
-                />
-              </div>
+            <div className="flex flex-col gap-2">
+              <Label>Links</Label>
+              {links.map((link) => (
+                <div key={link.id} className="flex items-end gap-2">
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Label className="text-xs font-normal text-muted-foreground">Link title (optional)</Label>
+                    <Input
+                      value={link.label}
+                      onChange={(e) => updateLink(link.id, { label: e.target.value })}
+                      placeholder="e.g. Zoom Call"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Label className="text-xs font-normal text-muted-foreground">Link URL</Label>
+                    <Input
+                      type="url"
+                      value={link.url}
+                      onChange={(e) => updateLink(link.id, { url: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => removeLink(link.id)}>
+                    <Icon name="delete" size={16} />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" size="sm" variant="outline" onClick={addLink} className="self-start">
+                <Icon name="add" size={16} />
+                Add link
+              </Button>
             </div>
           )}
 

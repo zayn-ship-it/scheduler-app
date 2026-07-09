@@ -117,8 +117,7 @@ async function reconstructProject(projectId: string): Promise<Project | undefine
       deliverableIds: b.deliverable_ids || [],
       color: b.color,
       personId: b.person_id,
-      externalLink: b.external_link,
-      linkLabel: b.link_label,
+      links: b.links || [],
       isDelay: b.is_delay ?? false,
     })),
     phaseBarEntries: (phaseBarEntries || []).map((p: any) => ({
@@ -311,8 +310,7 @@ export async function addBlock(
     deliverable_ids: block.deliverableIds,
     color: block.color,
     person_id: block.personId,
-    external_link: block.externalLink,
-    link_label: block.linkLabel,
+    links: block.links,
     is_delay: block.isDelay,
   });
 
@@ -334,8 +332,7 @@ export async function updateBlock(_projectId: string, block: ScheduleBlock): Pro
       deliverable_ids: block.deliverableIds,
       color: block.color,
       person_id: block.personId,
-      external_link: block.externalLink,
-      link_label: block.linkLabel,
+      links: block.links,
       is_delay: block.isDelay,
     })
     .eq("id", block.id);
@@ -452,8 +449,7 @@ export async function insertDelayBlock(projectId: string, lane: "RJF" | "CLIENT"
     deliverableIds: [],
     color: "",
     personId: null,
-    externalLink: null,
-    linkLabel: null,
+    links: [],
     isDelay: true,
   });
 

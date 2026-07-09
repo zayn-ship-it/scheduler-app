@@ -20,11 +20,12 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX } from "@/features/schedule/gridConstants";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
-import { infoLines } from "@/features/schedule/deliverableFormat";
+import { infoLines, linkDisplayLabel } from "@/features/schedule/deliverableFormat";
 import { getPhaseTitles } from "@/lib/storage/phaseTitleRepository";
 import { dayIndex, enumerateDays, formatDisplayDate, fromIsoDate, spanLengthDays, todayIso } from "@/lib/dateUtils";
 import type { Deliverable, PhaseTitle, Project, ScheduleBlock } from "@/lib/storage/types";
@@ -80,16 +81,20 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
           </ul>
         </div>
       )}
-      {block.externalLink && (
-        <a
-          href={block.externalLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-primary underline"
-        >
-          <Icon name="link_2" size={12} />
-          {block.linkLabel || "Open meeting link"}
-        </a>
+      {block.links.length > 0 && (
+        <div className="rounded-md bg-muted/60 p-3">
+          <p className="mb-1.5 text-xs font-semibold text-foreground">Links</p>
+          <div className="flex flex-col gap-2">
+            {block.links.map((link) => (
+              <Button key={link.id} variant="outline" size="sm" className="justify-start gap-1.5" asChild>
+                <a href={link.url} target="_blank" rel="noopener noreferrer">
+                  <Icon name="link_2" size={12} />
+                  {linkDisplayLabel(link)}
+                </a>
+              </Button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

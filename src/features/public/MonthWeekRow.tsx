@@ -28,6 +28,7 @@
  * calendar preview, it never hides data from the drawer.
  */
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -36,7 +37,7 @@ import { clipRangeToRow, isDateInMonth } from "@/lib/calendarUtils";
 import { formatDisplayDate, fromIsoDate, todayIso } from "@/lib/dateUtils";
 import type { Deliverable, PhaseBarEntry, PhaseTitle, ScheduleBlock } from "@/lib/storage/types";
 import { getContrastTextColor, RJF_BLOCK_COLOR } from "@/features/schedule/colorPresets";
-import { infoLines } from "@/features/schedule/deliverableFormat";
+import { infoLines, linkDisplayLabel } from "@/features/schedule/deliverableFormat";
 import { cn } from "@/lib/utils";
 
 const DAY_NUMBER_HEIGHT = 24;
@@ -50,12 +51,6 @@ const CONTENT_GAP = 4;
 const TRACK_GAP = 3;
 /** RJF/Client blocks never render shorter than this, even with no information lines. */
 const MIN_BLOCK_HEIGHT = 48;
-
-/** The link's display text: the block's custom title if set, otherwise a sensible default. */
-function linkText(block: ScheduleBlock): string {
-  return block.linkLabel || "Open meeting link";
-}
-
 
 interface Segment {
   block: ScheduleBlock;
@@ -239,16 +234,20 @@ function BlockDetailContent({ block, lines }: { block: ScheduleBlock; lines: str
           </ul>
         </div>
       )}
-      {block.externalLink && (
-        <a
-          href={block.externalLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-primary underline"
-        >
-          <Icon name="link_2" size={12} />
-          {linkText(block)}
-        </a>
+      {block.links.length > 0 && (
+        <div className="rounded-md bg-muted/60 p-3">
+          <p className="mb-1.5 text-xs font-semibold text-foreground">Links</p>
+          <div className="flex flex-col gap-2">
+            {block.links.map((link) => (
+              <Button key={link.id} variant="outline" size="sm" className="justify-start gap-1.5" asChild>
+                <a href={link.url} target="_blank" rel="noopener noreferrer">
+                  <Icon name="link_2" size={12} />
+                  {linkDisplayLabel(link)}
+                </a>
+              </Button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -322,14 +321,14 @@ function TrackLayer({
                       {blockBadgeText(block)}
                     </span>
                   )}
-                  {block.externalLink && (
+                  {block.links.length > 0 && (
                     <a
-                      href={block.externalLink}
+                      href={block.links[0].url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn("shrink-0", isDarkText ? "text-foreground/80 hover:text-foreground" : "text-white/90 hover:text-white")}
                       onClick={(e) => e.stopPropagation()}
-                      title={linkText(block)}
+                      title={linkDisplayLabel(block.links[0])}
                     >
                       <Icon name="link_2" size={12} />
                     </a>
