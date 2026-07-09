@@ -7,8 +7,8 @@
  * stacked swimlanes: that project's phaseBarEntries on top (colored/labelled
  * from the same centrally-managed PhaseTitle a project's own live-link
  * schedule already uses, so a phase reads the same everywhere it appears),
- * and its Client-lane blocks below - always a fixed neutral color regardless
- * of project/phase, since this second lane is just "what's the client doing"
+ * and its Client-lane blocks below - always a fixed blue regardless of
+ * project/phase, since this second lane is just "what's the client doing"
  * at a glance, not something that needs its own color identity.
  */
 import { useEffect, useMemo, useRef } from "react";
@@ -17,6 +17,7 @@ import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX } from "@/features/schedule/gr
 import { dayIndex, enumerateDays, formatDisplayDate, fromIsoDate, spanLengthDays, todayIso } from "@/lib/dateUtils";
 import type { PhaseBarEntry, PhaseTitle, Project, ScheduleBlock } from "@/lib/storage/types";
 import { cn } from "@/lib/utils";
+import { useDragToScroll } from "@/features/schedule/useDragToScroll";
 
 const ROW_HEIGHT_PX = 48;
 
@@ -125,7 +126,7 @@ function ProjectRow({
           return (
             <div
               key={block.id}
-              className="absolute flex items-center rounded-md bg-neutral-400"
+              className="absolute flex items-center rounded-md bg-blue-500"
               style={{
                 left: startIdx * DAY_COLUMN_WIDTH_PX + 2,
                 width: blockWidth,
@@ -135,7 +136,7 @@ function ProjectRow({
               title={`${block.title || "(untitled)"} (${dateRange})`}
             >
               <span
-                className="truncate px-2 text-[13px] font-medium text-black"
+                className="truncate px-2 text-[11px] font-medium text-white"
                 style={{ position: "sticky", left: LANE_LABEL_WIDTH_PX, maxWidth: blockWidth }}
               >
                 {block.title || "(untitled)"}
@@ -156,6 +157,7 @@ export function ProjectPhasesView({
   phaseTitles: PhaseTitle[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  useDragToScroll(scrollRef);
   const phaseTitlesById = useMemo(() => new Map(phaseTitles.map((t) => [t.id, t])), [phaseTitles]);
 
   const phaseAssignmentsByProject = useMemo(() => {
@@ -230,7 +232,7 @@ export function ProjectPhasesView({
   return (
     <div
       ref={scrollRef}
-      className="h-full snap-x snap-mandatory overflow-auto rounded-md border"
+      className="h-full snap-x snap-mandatory overflow-auto rounded-md border cursor-grab select-none"
       style={{ scrollPaddingLeft: LANE_LABEL_WIDTH_PX }}
     >
       <div className="inline-block min-w-full">

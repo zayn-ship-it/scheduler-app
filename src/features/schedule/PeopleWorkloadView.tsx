@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DAY_COLUMN_WIDTH_PX, LANE_LABEL_WIDTH_PX } from "@/features/schedule/gridConstants";
 import { defaultPersonColor, getContrastTextColor, PHASE_COLOR_PRESETS } from "@/features/schedule/colorPresets";
 import { updatePerson } from "@/lib/storage/peopleRepository";
+import { useDragToScroll } from "@/features/schedule/useDragToScroll";
 import { dayIndex, enumerateDays, formatDisplayDate, fromIsoDate, spanLengthDays, todayIso } from "@/lib/dateUtils";
 import type { Person, Project, ScheduleBlock } from "@/lib/storage/types";
 import { cn } from "@/lib/utils";
@@ -158,6 +159,7 @@ export function PeopleWorkloadView({
   onPersonColorChanged: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  useDragToScroll(scrollRef);
   const [colorOverrides, setColorOverrides] = useState<Record<string, string>>({});
 
   const assignmentsByPerson = useMemo(() => {
@@ -219,7 +221,7 @@ export function PeopleWorkloadView({
   return (
     <div
       ref={scrollRef}
-      className="h-full snap-x snap-mandatory overflow-auto rounded-md border"
+      className="h-full snap-x snap-mandatory overflow-auto rounded-md border cursor-grab select-none"
       style={{ scrollPaddingLeft: LANE_LABEL_WIDTH_PX }}
     >
       <div className="inline-block min-w-full">
